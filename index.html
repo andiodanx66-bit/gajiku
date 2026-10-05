@@ -2,7 +2,7 @@
 <html lang="id"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0f172a">
+<meta name="theme-color" id="tmc" content="#0f172a">
 <meta name="description" content="Aplikasi pencatatan absensi dan perhitungan gaji harian">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -12,35 +12,62 @@
 <link rel="icon" href="/icon.svg">
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
 <title>Gajiku</title>
+<script>
+/* terapkan tema sebelum render supaya tidak ada kedipan (FOUC) */
+(function(){
+var k='gaji-theme';
+var t;try{t=localStorage.getItem(k)}catch(e){}
+if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';
+var r=document.documentElement;r.dataset.theme=t;
+r.style.background=t==='light'?'#f1f5f9':'#0f172a';
+})();
+</script>
 <style>
-:root{--bg:#0f172a;--card:#1e293b;--tx:#f1f5f9;--mu:#94a3b8;--ok:#22c55e;--ot:#f59e0b;--off:#475569;--ln:#334155;--lv:#38bdf8}
+/* variabel tema (dipakai ulang seluruh app) */
+:root{
+--bg:#0f172a;--card:#1e293b;--tx:#f1f5f9;--mu:#94a3b8;--ok:#22c55e;--ot:#f59e0b;--off:#475569;--ln:#334155;--lv:#38bdf8;
+--on-tx:#052e16;--lv-tx:#082f49;--tot:#14532d;--bd:#0009;--d-tx:#f1f5f9;
+--had-bg:#166534;--had-bd:#15803d;--had-tx:#dcfce7;
+--lv-bg:#1e3a5f;--lv-bd:#2563eb;--lv-tx2:#bfdbfe;
+--alp-bg:#7f1d1d;--alp-bd:#dc2626;--alp-tx:#fee2e2;--otx:#fca5a5;
+--err-tx:#fca5a5;--err-bd:#7f1d1d;--edt:#1e3a5f;
+}
+[data-theme="light"]{
+--bg:#f1f5f9;--card:#ffffff;--tx:#0f172a;--mu:#64748b;--ok:#16a34a;--ot:#d97706;--off:#cbd5e1;--ln:#e2e8f0;--lv:#0284c7;
+--on-tx:#f0fdf4;--lv-tx:#f0f9ff;--tot:#dcfce7;--bd:#0006;--d-tx:#0f172a;
+--had-bg:#bbf7d0;--had-bd:#22c55e;--had-tx:#14532d;
+--lv-bg:#dbeafe;--lv-bd:#3b82f6;--lv-tx2:#1e3a8a;
+--alp-bg:#fecaca;--alp-bd:#ef4444;--alp-tx:#7f1d1d;--otx:#dc2626;
+--err-tx:#b91c1c;--err-bd:#fecaca;--edt:#dbeafe;
+}
 *{box-sizing:border-box;margin:0}
-body{background:var(--bg);color:var(--tx);font:15px system-ui,sans-serif;padding:max(12px,env(safe-area-inset-top)) 12px max(16px,env(safe-area-inset-bottom));max-width:520px;margin:auto}
+body{background:var(--bg);color:var(--tx);font:15px system-ui,sans-serif;padding:max(12px,env(safe-area-inset-top)) 12px max(16px,env(safe-area-inset-bottom));max-width:520px;margin:auto;transition:background .2s,color .2s}
 h1{font-size:20px}
 .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-button{font:inherit;color:var(--tx);background:var(--card);border:1px solid var(--ln);border-radius:10px;padding:8px 12px}
-button.p{background:var(--ok);color:#052e16;border:0;font-weight:700}
+button{font:inherit;color:var(--tx);background:var(--card);border:1px solid var(--ln);border-radius:10px;padding:8px 12px;transition:background .2s,color .2s,border-color .2s}
+button.p{background:var(--ok);color:var(--on-tx);border:0;font-weight:700}
 .nav{display:flex;align-items:center;justify-content:space-between;margin:10px 0}
 .nav b{font-size:16px}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.card{background:var(--card);border-radius:12px;padding:10px;grid-column:span 2}
+.card{background:var(--card);border-radius:12px;padding:10px;grid-column:span 2;transition:background .2s}
 .card.w{grid-column:span 4}
 .card small{color:var(--mu);display:block;font-size:11px}
 .card b{font-size:15px}
-.tot{background:#14532d}
+.tot{background:var(--tot)}
 .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:12px}
 .dh{text-align:center;color:var(--mu);font-size:11px;padding:2px}
-.d{min-height:58px;background:var(--card);border-radius:8px;padding:4px;font-size:11px;border:1px solid transparent;display:flex;flex-direction:column;justify-content:space-between;text-align:left;color:var(--tx)}
-.d span{font-size:13px;font-weight:600}
-.d em{font-style:normal;color:#052e16}
-.d i{font-style:normal;color:#7c2d12}
-.d u{text-decoration:none;color:#082f49}
-.d.off{background:transparent;border:1px dashed var(--off);color:var(--mu)}
-.d.hadir{background:#166534;border-color:#15803d;color:#dcfce7}
-.d.sakit{background:#1e3a5f;border-color:#2563eb;color:#bfdbfe}
-.d.izin{background:#1e3a5f;border-color:#2563eb;color:#bfdbfe}
-.d.cuti{background:#1e3a5f;border-color:#2563eb;color:#bfdbfe}
-.d.alpa{background:#7f1d1d;border-color:#dc2626;color:#fee2e2}
+.d{min-height:58px;background:var(--card);border-radius:8px;padding:4px;font-size:11px;border:1px solid transparent;display:flex;flex-direction:column;justify-content:space-between;text-align:left;color:var(--d-tx)}
+.d span{font-size:13px;font-weight:600;color:var(--d-tx)}
+.d span i{font-size:10px;margin-left:1px}/* checklist hadir di samping tanggal */
+.d em{font-style:normal;color:var(--d-tx)}
+.d i{font-style:normal;color:var(--d-tx)}
+.d i.ot{color:var(--otx)}/* nominal lembur (+xxxx) */
+.d u{text-decoration:none;color:var(--d-tx)}
+.d div{color:var(--d-tx)}
+.d.off{background:transparent;border:1px dashed var(--off);color:var(--d-tx)}
+.d.hadir{background:var(--had-bg);border-color:var(--had-bd);color:var(--d-tx)}
+.d.sakit,.d.izin,.d.cuti{background:var(--lv-bg);border-color:var(--lv-bd);color:var(--d-tx)}
+.d.alpa{background:var(--alp-bg);border-color:var(--alp-bd);color:var(--d-tx)}
 .d.today{outline:2px solid var(--lv);outline-offset:1px}
 .d.x{visibility:hidden}
 .lgd{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:10px;justify-content:center}
@@ -48,15 +75,22 @@ button.p{background:var(--ok);color:#052e16;border:0;font-weight:700}
 .lgd i{display:inline-block;width:10px;height:10px;border-radius:3px;flex-shrink:0}
 /* modal detail tabel */
 #dtl{width:min(96vw,520px)}
-.dtbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px}
-.dtbl th{background:var(--bg);color:var(--mu);padding:6px 4px;text-align:left;position:sticky;top:0;font-weight:600}
+.dtbl{width:100%;min-width:620px;border-collapse:collapse;font-size:12px;margin-top:12px}
+.dtbl th{background:var(--bg);color:var(--mu);padding:6px 4px;text-align:left;position:sticky;top:0;font-weight:600;white-space:nowrap}
 .dtbl td{padding:6px 4px;border-bottom:1px solid var(--ln);vertical-align:middle}
 .dtbl tr:last-child td{border-bottom:none}
-.dtbl .rp{text-align:right}
-.dtbl .ct{text-align:center}
-.sc{max-height:60vh;overflow-y:auto;border-radius:8px;background:var(--bg)}
+.dtbl .rp{text-align:right;white-space:nowrap}
+.dtbl .ct{text-align:center;white-space:nowrap}
+/* kolom nominal & total dilebarkan supaya angka muat satu baris */
+.dtbl th:nth-child(7),.dtbl td:nth-child(7),
+.dtbl th:nth-child(8),.dtbl td:nth-child(8){width:120px;min-width:120px}
+.dtbl th:nth-child(7),.dtbl td:nth-child(7){width:168px;min-width:168px}
+.dtbl th:nth-child(1),.dtbl td:nth-child(1),
+.dtbl th:nth-child(2),.dtbl td:nth-child(2){min-width:72px}
+.sc{max-height:60vh;overflow:auto;border-radius:8px;background:var(--bg);-webkit-overflow-scrolling:touch}
 dialog{background:var(--card);color:var(--tx);border:0;border-radius:14px;padding:16px;width:min(92vw,380px);margin:auto}
-dialog::backdrop{background:#0009}
+dialog::backdrop{background:var(--bd)}
+input[type=checkbox]{accent-color:var(--ok)}
 label{display:block;margin:10px 0 4px;color:var(--mu);font-size:12px}
 input[type=number],input[type=email],input[type=password]{width:100%;padding:10px;border-radius:8px;border:1px solid var(--ln);background:var(--bg);color:var(--tx);font:inherit}
 .row{display:flex;gap:8px;margin-top:14px}.row button{flex:1}
@@ -66,25 +100,30 @@ input[type=number],input[type=email],input[type=password]{width:100%;padding:10p
 #inf{color:var(--mu);font-size:12px;margin-top:6px;min-height:16px}
 .nm{width:100%;margin-top:10px}
 .chips{display:flex;gap:8px;margin-top:8px}.chip{flex:1}
-.chip.on{background:var(--lv);color:#082f49;border:0;font-weight:700}
+.chip.on{background:var(--lv);color:var(--lv-tx);border:0;font-weight:700}
 .hid{display:none!important}
 .cols{display:flex;gap:8px;margin:12px 0}
 .col{flex:1;height:200px;overflow-y:auto;position:relative;background:var(--bg);border-radius:8px}
 .col div{padding:9px;text-align:center;font-size:16px}
-.col div.on{background:var(--ok);color:#052e16;font-weight:700;border-radius:6px}
+.col div.on{background:var(--ok);color:var(--on-tx);font-weight:700;border-radius:6px}
 .brow{display:flex;align-items:center;gap:8px;margin-top:8px}.brow span{width:56px;font-size:13px;color:var(--mu)}.brow .tb{flex:1}
-.dl{width:100%;margin-top:12px;color:#fca5a5;border-color:#7f1d1d}
+.dl{width:100%;margin-top:12px;color:var(--err-tx);border-color:var(--err-bd)}
 .note{color:var(--mu);font-size:11px;margin-top:12px;text-align:center}
 /* auth */
 #auth-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
 #auth-box{background:var(--card);border-radius:16px;padding:24px;width:100%;max-width:360px}
 #auth-box h2{font-size:18px;margin-bottom:4px}
 #auth-box p{color:var(--mu);font-size:13px;margin-bottom:8px}
-#auth-err{color:#fca5a5;font-size:13px;margin-top:8px;min-height:18px}
+#auth-err{color:var(--err-tx);font-size:13px;margin-top:8px;min-height:18px}
+/* tombol tema */
+.tgl{width:40px;height:40px;padding:0;font-size:18px;line-height:1;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+#tgl-auth{position:fixed;top:max(12px,env(safe-area-inset-top));right:12px;z-index:50}
+[data-theme="light"] .tgl{box-shadow:0 2px 8px #0002}
 /* sync status */
 #sync{position:fixed;bottom:env(safe-area-inset-bottom,12px);right:12px;font-size:11px;color:var(--mu);opacity:0;transition:opacity .4s}
 #sync.show{opacity:1}
 </style></head><body>
+<button class="tgl" id="tgl-auth" title="Ganti tema" aria-label="Ganti tema">🌙</button>
 <!-- AUTH SCREEN -->
 <div id="auth-wrap">
   <div id="auth-box">
@@ -105,14 +144,14 @@ input[type=number],input[type=email],input[type=password]{width:100%;padding:10p
 
 <!-- APP -->
 <div id="app" class="hid">
-<div class="top"><h1>💰 Gajiku</h1><div style="display:flex;gap:8px"><button id="set">⚙️ Pengaturan</button><button id="logout" title="Keluar" style="padding:8px 10px">↩</button></div></div>
+<div class="top"><h1>💰 Gajiku</h1><div style="display:flex;gap:8px"><button class="tgl" id="tgl-app" title="Ganti tema" aria-label="Ganti tema">🌙</button><button id="set">⚙️ Pengaturan</button><button id="logout" title="Keluar" style="padding:8px 10px">↩</button></div></div>
 <div class="nav"><button id="prev">‹</button><b id="ttl"></b><div style="display:flex;gap:6px"><button id="next">›</button><button id="ahl" title="Atur hari libur bulan ini">🗓️</button></div></div>
 <div class="grid" id="sum"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
 <div class="lgd" style="margin-top:0">
-  <span><i style="background:#166534;border:1px solid #15803d"></i> Hadir</span>
-  <span><i style="background:#1e3a5f;border:1px solid #2563eb"></i> Sakit/Izin/Cuti</span>
-  <span><i style="background:#7f1d1d;border:1px solid #dc2626"></i> Alpa</span>
+  <span><i style="background:var(--had-bg);border:1px solid var(--had-bd)"></i> Hadir</span>
+  <span><i style="background:var(--lv-bg);border:1px solid var(--lv-bd)"></i> Sakit/Izin/Cuti</span>
+  <span><i style="background:var(--alp-bg);border:1px solid var(--alp-bd)"></i> Alpa</span>
   <span><i style="background:transparent;border:1px dashed var(--off)"></i> Libur</span>
 </div>
 <button id="det" style="white-space:nowrap;flex-shrink:0">📋 Detail</button>
@@ -224,9 +263,28 @@ const save=()=>{
 };
 
 const $=id=>document.getElementById(id);
+
+/* ── TEMA (putih / gelap) ── */
+const TK='gaji-theme';
+const setTheme=t=>{
+document.documentElement.dataset.theme=t;
+document.documentElement.style.background=t==='light'?'#f1f5f9':'#0f172a';
+try{localStorage.setItem(TK,t)}catch(e){}
+$('tmc').setAttribute('content',t==='light'?'#f1f5f9':'#0f172a');
+const ic=t==='light'?'☀️':'🌙';
+document.querySelectorAll('.tgl').forEach(b=>{
+if(b.textContent!==ic){b.textContent=ic;b.setAttribute('aria-label',t==='light'?'Aktifkan tema gelap':'Aktifkan tema terang')}
+});
+};
+document.querySelectorAll('.tgl').forEach(b=>b.onclick=()=>setTheme(document.documentElement.dataset.theme==='light'?'dark':'light'));
+setTheme(document.documentElement.dataset.theme);
+matchMedia('(prefers-color-scheme: light)').addEventListener('change',e=>{
+let s=null;try{s=localStorage.getItem(TK)}catch(err){}
+if(!s)setTheme(e.matches?'light':'dark');
+});
 const LB={sakit:'Sakit',izin:'Izin',cuti:'Cuti',alpa:'Alpa'};
 const rp=n=>'Rp '+Math.round(n).toLocaleString('id-ID');
-const sh=n=>n>=1e6?(n/1e6).toFixed(2).replace(/\.?0+$/,'')+'jt':Math.round(n/1e3)+'rb';
+const rn=n=>Math.round(n).toLocaleString('id-ID');// angka uang tanpa prefix "Rp" (untuk cell kalender)
 const key=(y,m,d)=>`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 let cur=new Date();cur.setDate(1);
 const isOff=(y,m,d)=>!S.wdays.includes(new Date(y,m,d).getDay())||!!S.holMap[key(y,m,d)];
@@ -262,10 +320,10 @@ function render(){
     const tod=t.getFullYear()==c.y&&t.getMonth()==c.m&&t.getDate()==d;
     let mid='<div></div>';
     let cls='';
-    if(S.att[k]){mid=`<em style="font-size:9px">✓ ${rp(c.perDay)}</em>`;cls='hadir';}
+    if(S.att[k]){mid=`<em style="font-size:9px">${rn(c.perDay)}</em>`;cls='hadir';}
     else if(S.lv[k]){mid=`<u>${LB[S.lv[k]]}</u>`;cls=S.lv[k];}
     else if(off){const holName=S.holMap&&S.holMap[k];mid=`<div style="font-size:10px;line-height:1.2">${holName||'libur'}</div>`;cls='off';}
-    h+=`<button class="d ${cls} ${tod?'today':''}" data-d="${d}"><span>${d}</span>${mid}`+(o?`<i style="font-size:9px">+${rp(o*c.otHour)}</i>`:'')+`</button>`;
+    h+=`<button class="d ${cls} ${tod?'today':''}" data-d="${d}"><span>${d}${S.att[k]?'<i>✓</i>':''}</span>${mid}`+(o?`<i class="ot" style="font-size:9px">+${rn(o*c.otHour)}</i>`:'')+`</button>`;
   }
   $('cal').innerHTML=h;
 }
@@ -361,9 +419,9 @@ $('det').onclick=()=>{
     const k=key(y,m,d),off=isOff(y,m,d),dt=new Date(y,m,d);
     const hari=DN2[dt.getDay()];
     const tm=S.tm[k];
-    let masuk='-',pulang='-',jamKerja=0,jamLembur=0,nominal=0,status='',styCls='';
+    let masuk='-',pulang='-',jamKerja=0,jamLembur=0,nominal=0,otPay=0,status='',styCls='';
     if(S.att[k]){
-      status='Hadir';styCls='color:#86efac';
+      status='Hadir';styCls='color:var(--had-tx)';
       if(tm){masuk=tm[0]||'-';pulang=tm[1]||'-';}
       const otH=+S.ot[k]||0;
       if(tm&&tm[0]&&tm[1]){
@@ -377,11 +435,11 @@ $('det').onclick=()=>{
         if(brkOt[0]&&brkOt[1]){const obs=mn(brkOt[0]),obe=mn(brkOt[1]);otBrk=Math.max(0,Math.min(b,obe)-Math.max(a+S.hours*60,obs))/60;}
         jamLembur=+Math.max(0,jamKerja-S.hours-otBrk).toFixed(2);
       }
-      nominal=c.perDay+otH*c.otHour;
+      otPay=otH*c.otHour;nominal=c.perDay+otPay;
     }else if(S.lv[k]){
       status=LB[S.lv[k]];
-      if(S.lv[k]==='alpa')styCls='color:#fca5a5';
-      else styCls='color:#93c5fd';
+      if(S.lv[k]==='alpa')styCls='color:var(--alp-tx)';
+      else styCls='color:var(--lv-tx2)';
       if(S.paid[S.lv[k]])nominal=c.perDay;
     }else if(off){
       status=S.holMap&&S.holMap[k]?S.holMap[k]:'Libur';styCls='color:var(--mu)';
@@ -396,7 +454,7 @@ $('det').onclick=()=>{
       <td class="ct">${pulang}</td>
       <td class="ct">${jamKerja?+jamKerja.toFixed(1)+'j':'-'}</td>
       <td class="ct">${jamLembur?+jamLembur.toFixed(1)+'j':'-'}</td>
-      <td class="rp">${nominal?rp(nominal):'-'}</td>
+      <td class="rp">${nominal?(otPay?rp(c.perDay)+' + '+rp(otPay):rp(nominal)):'-'}</td>
       <td class="rp" style="color:var(--ok)">${nominal&&S.att[k]?rp(runTotal):'-'}</td>
     </tr>`;
   }
@@ -421,14 +479,14 @@ function renderHolList(){
     const dt=new Date(k+'T00:00');
     const label=dt.toLocaleDateString('id-ID',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
     const isEditing=k===hlEditKey;
-    return`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px;border-bottom:1px solid var(--ln);gap:8px;${isEditing?'background:#1e3a5f;border-radius:6px;padding:8px;':''}">
+    return`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px;border-bottom:1px solid var(--ln);gap:8px;${isEditing?'background:var(--edt);border-radius:6px;padding:8px;':''}">
       <div style="min-width:0">
         <div style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${n}</div>
         <div style="font-size:11px;color:var(--mu)">${label}</div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
         <button data-ek="${k}" data-en="${n}" style="padding:4px 10px;font-size:12px">Edit</button>
-        <button data-hk="${k}" style="padding:4px 10px;color:#fca5a5;border-color:#7f1d1d;font-size:12px">Hapus</button>
+        <button data-hk="${k}" style="padding:4px 10px;color:var(--err-tx);border-color:var(--err-bd);font-size:12px">Hapus</button>
       </div>
     </div>`;
   }).join('');
@@ -505,8 +563,8 @@ $('prev').onclick=()=>{cur.setMonth(cur.getMonth()-1);render()};
 $('next').onclick=()=>{cur.setMonth(cur.getMonth()+1);render()};
 
 /* ── AUTH ── */
-function showApp(){$('auth-wrap').classList.add('hid');$('app').classList.remove('hid');render();}
-function showAuth(){$('auth-wrap').classList.remove('hid');$('app').classList.add('hid');}
+function showApp(){$('tgl-auth').classList.add('hid');$('auth-wrap').classList.add('hid');$('app').classList.remove('hid');render();}
+function showAuth(){$('tgl-auth').classList.remove('hid');$('auth-wrap').classList.remove('hid');$('app').classList.add('hid');}
 
 async function loadFromSupabase(){
   const{data:{user}}=await sb.auth.getUser();
