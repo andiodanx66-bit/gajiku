@@ -207,12 +207,13 @@ input[type=number],input[type=email],input[type=password]{width:100%;padding:10p
 <div class="row"><button id="brc">Batal</button><button class="p" id="brs">Simpan</button></div></dialog>
 
 <dialog id="dtl"><b id="dtl-ttl"></b>
+<div id="dtl-info" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--mu)"></div>
 <div class="sc"><table class="dtbl"><thead>
 <tr><th rowspan="2">Tgl</th><th rowspan="2">Status</th><th rowspan="2">Masuk</th><th rowspan="2">Pulang</th><th class="ct" colspan="2">Jam kerja</th><th class="ct" colspan="2">Nominal</th><th rowspan="2" class="rp">Total</th></tr>
 <tr><th class="ct">Non-lembur</th><th class="ct">Lembur</th><th class="rp">Non-lembur</th><th class="rp">Lembur</th></tr>
 </thead><tbody id="dtl-body"></tbody></table></div>
 <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--ln)" id="dtl-sum"></div>
-<div class="row"><button id="dtl-c">Tutup</button></div></dialog>
+<div class="row"><button id="dtl-x">📥 Excel</button><button id="dtl-c">Tutup</button></div></dialog>
 
 <dialog id="hl" tabindex="-1"><b id="hl-ttl">🗓️ Hari Libur Nasional</b>
 <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
@@ -428,11 +429,15 @@ $('dl').onclick=()=>{
   [S.att,S.tm,S.ot,S.lv].forEach(o=>delete o[sel]);save();$('ds').close();render()};
 
 /* modal detail */
+let xAoa=null,xFile=''; // data untuk export excel
 $('det').onclick=()=>{
   const c=calc();
   const y=c.y,m=c.m;
-  $('dtl-ttl').textContent='Detail Kehadiran – '+cur.toLocaleDateString('id-ID',{month:'long',year:'numeric'});
+  const title='Detail Kehadiran – '+cur.toLocaleDateString('id-ID',{month:'long',year:'numeric'});
+  $('dtl-ttl').textContent=title;
+  $('dtl-info').innerHTML=`<span>Gaji pokok <b style="color:var(--tx)">${rp(S.salary)}</b></span><span>Per jam <b style="color:var(--tx)">${rp(c.perHour)}</b></span><span>Total hari kerja <b style="color:var(--tx)">${c.wd} hari</b></span>`;
   const DN2=['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+  const expRows=[];
   let rows='',totalKerja=0,totalLembur=0,totalNominal=0,runTotal=0,totalGaji=0,totalOt=0;
   for(let d=1;d<=c.n;d++){
     const k=key(y,m,d),off=isOff(y,m,d),dt=new Date(y,m,d);
@@ -478,18 +483,93 @@ $('det').onclick=()=>{
       <td class="rp">${otPay?rp(otPay):'-'}</td>
       <td class="rp" style="color:var(--ok)">${nominal&&S.att[k]?rp(runTotal):'-'}</td>
     </tr>`;
+    expRows.push([`${String(d).padStart(2,'0')} ${hari}`,status,masuk,pulang,
+      kNet?+kNet.toFixed(2):'',jamLembur?+jamLembur.toFixed(2):'',
+      nominal?Math.round(c.perDay):'',otPay?Math.round(otPay):'',
+      nominal&&S.att[k]?Math.round(runTotal):'']);
   }
   $('dtl-body').innerHTML=rows;
+  xAoa=[
+    [title],
+    ['Gaji pokok',Math.round(S.salary),'Per jam',Math.round(c.perHour),'Total hari kerja',c.wd],
+    [],
+    ['Tgl','Status','Masuk','Pulang','Non-lembur (jam)','Lembur (jam)','Non-lembur (Rp)','Lembur (Rp)','Total (Rp)'],
+    ...expRows,
+    [],
+    ['Non-lembur (jam)',+totalKerja.toFixed(2)],
+    ['Lembur (jam)',+totalLembur.toFixed(2)],
+    ['Non-lembur (Rp)',Math.round(totalGaji)],
+    ['Lembur (Rp)',Math.round(totalOt)],
+    ['Gaji sementara (Rp)',Math.round(totalGaji+totalOt)]
+  ];
+  xFile=`detail-kehadiran-${y}-${String(m+1).padStart(2,'0')}.xlsx`;
   $('dtl-sum').innerHTML=`<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:13px">
     <span style="color:var(--mu)">Non-lembur <b style="color:var(--tx)">${+totalKerja.toFixed(1)} jam</b></span>
     <span style="color:var(--mu)">Lembur <b style="color:var(--ot)">${+totalLembur.toFixed(1)} jam</b></span>
     <span style="color:var(--mu)">Non-lembur <b style="color:var(--tx)">${rp(totalGaji)}</b></span>
     <span style="color:var(--mu)">Lembur <b style="color:var(--ot)">${rp(totalOt)}</b></span>
-    <span style="color:var(--mu)">Gaji sementara <b style="color:var(--ok)">${rp(totalGaji+totalOt)}</b></span>
-  </div>`;
+  </div>
+  <div style="margin-top:4px;font-size:13px;color:var(--mu)">Gaji sementara <b style="color:var(--ok)">${rp(totalGaji+totalOt)}</b></div>`;
   $('dtl').showModal();
 };
 $('dtl-c').onclick=()=>$('dtl').close();
+$('dtl-x').onclick=async()=>{
+  if(!xAoa)return;
+  const b=$('dtl-x');b.disabled=true;b.textContent='Memproses...';
+  try{
+    if(!window.ExcelJS)await new Promise((res,rej)=>{
+      const s=document.createElement('script');
+      s.src='https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
+      s.onload=res;s.onerror=()=>rej(new Error('gagal memuat library Excel'));
+      document.head.appendChild(s);
+    });
+    const wb=new ExcelJS.Workbook();
+    const ws=wb.addWorksheet('Detail Kehadiran',{views:[{state:'frozen',ySplit:4}]});
+    xAoa.forEach(r=>ws.addRow(r));
+    const n=xAoa.length,col=9;
+    const thin={style:'thin',color:{argb:'FF9E9E9E'}};
+    const bd={top:thin,left:thin,right:thin,bottom:thin};
+    // judul digabung & ditebalkan
+    ws.mergeCells(1,1,1,col);
+    ws.getCell(1,1).font={bold:true,size:12};
+    // baris info: label ditebalkan, angka diformat
+    ['A2','C2','E2'].forEach(a=>ws.getCell(a).font={bold:true});
+    ws.getCell('B2').numFmt='#,##0';
+    ws.getCell('D2').numFmt='#,##0';
+    // header tabel (baris 4): tebal, abu-abu, rata tengah, bergaris
+    for(let c=1;c<=col;c++){
+      const cell=ws.getCell(4,c);
+      cell.font={bold:true};
+      cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF2F2F2'}};
+      cell.alignment={horizontal:'center',vertical:'middle'};
+      cell.border=bd;
+    }
+    // isi tabel: grid + format angka
+    for(let r=5;r<=n-6;r++)for(let c=1;c<=col;c++){
+      const cell=ws.getCell(r,c);
+      cell.border=bd;
+      if(c===5||c===6)cell.numFmt='0.00';
+      else if(c>=7)cell.numFmt='#,##0';
+      if(c===1||c===3||c===4)cell.alignment={horizontal:'center'};
+    }
+    // ringkasan (5 baris terakhir): grid di 2 kolom pertama
+    for(let r=n-4;r<=n;r++){
+      ws.getCell(r,1).border=bd;ws.getCell(r,1).font={bold:true};
+      ws.getCell(r,2).border=bd;ws.getCell(r,2).numFmt=r<=n-3?'0.00':'#,##0';
+    }
+    ws.getCell(n,2).font={bold:true}; // Gaji sementara
+    // lebar kolom
+    [6,10,8,8,16,14,16,14,16].forEach((w,i)=>ws.getColumn(i+1).width=w);
+    // download
+    const buf=await wb.xlsx.writeBuffer();
+    const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=xFile;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),4000);
+  }catch(e){alert('Gagal membuat file Excel: '+(e&&e.message||e));}
+  finally{b.disabled=false;b.textContent='📥 Excel';}
+};
 
 /* modal hari libur nasional */
 let hlEditKey=null;
