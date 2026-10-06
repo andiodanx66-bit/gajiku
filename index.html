@@ -316,7 +316,13 @@ function calc(){
     if(isOff(y,m,d)){if(S.att[k])hd++;continue;}wd++;
     if(S.att[k])hd++;else if(S.lv[k]){lc[S.lv[k]]=(lc[S.lv[k]]||0)+1;if(S.paid[S.lv[k]])pl++}}
   const perDay=wd?S.salary/wd:0,perHour=perDay/S.hours,otHour=perHour*S.mult;
-  return{y,m,n,wd,hd,pd:hd+pl,lc,perDay,perHour,otHour,oh,otPay:oh*otHour};
+  // gaji: hari hadir dibayar sesuai jam efektif — keterlambatan/pulang cepat tidak dibayar penuh
+  let pay=0;
+  for(let d=1;d<=n;d++){const k=key(y,m,d);
+    if(S.att[k]){const H=dayHrs(y,m,d);pay+=(H?Math.min(H.net,S.hours):S.hours)*perHour+(+S.ot[k]||0)*otHour;continue}
+    if(S.lv[k]&&S.paid[S.lv[k]])pay+=perDay;
+  }
+  return{y,m,n,wd,hd,pd:hd+pl,lc,perDay,perHour,otHour,oh,otPay:oh*otHour,pay};
 }
 function render(){
   const c=calc();
@@ -329,7 +335,7 @@ function render(){
   <div class="card"><small>Lembur per jam (${S.mult}x)</small><b>${rp(c.otHour)}</b></div>
   <div class="card"><small>Lembur (${+c.oh.toFixed(2)} jam)</small><b>${rp(c.otPay)}</b></div>
   <div class="card"><small>Tidak masuk</small><b>Sakit ${c.lc.sakit} · Izin ${c.lc.izin} · Cuti ${c.lc.cuti} · Alpa ${c.lc.alpa}</b></div>
-  <div class="card tot"><small>Gaji sementara</small><b>${rp(c.pd*c.perDay+c.otPay)}</b></div>
+  <div class="card tot"><small>Gaji sementara</small><b>${rp(c.pay)}</b></div>
   `;
   let h=['Sen','Sel','Rab','Kam','Jum','Sab','Min'].map(x=>`<div class="dh">${x}</div>`).join('');
   const lead=(new Date(c.y,c.m,1).getDay()+6)%7;
@@ -340,7 +346,7 @@ function render(){
     const tod=t.getFullYear()==c.y&&t.getMonth()==c.m&&t.getDate()==d;
     let mid='<div></div>';
     let cls='';
-    if(S.att[k]){mid=`<em style="font-size:9px">${rn(c.perDay)}</em>`;cls='hadir';}
+    if(S.att[k]){const H=dayHrs(c.y,c.m,d);mid=`<em style="font-size:9px">${rn((H?Math.min(H.net,S.hours):S.hours)*c.perHour)}</em>`;cls='hadir';}
     else if(S.lv[k]){mid=`<u>${LB[S.lv[k]]}</u>`;cls=S.lv[k];}
     else if(off){const holName=S.holMap&&S.holMap[k];mid=`<div style="font-size:10px;line-height:1.2">${holName||'libur'}</div>`;cls='off';}
     h+=`<button class="d ${cls} ${tod?'today':''}" data-d="${d}"><span>${d}${S.att[k]?'<i>✓</i>':''}</span>${mid}`+(o?`<i class="ot" style="font-size:9px">+${rn(o*c.otHour)}</i>`:'')+`</button>`;
@@ -352,6 +358,23 @@ function render(){
 const T={ti:'',to:'',sin:'',sout:''};
 const setT=(id,v)=>{T[id]=v||'';$(id).textContent=v||'--:--'};
 const mn=t=>{const[a,b]=t.split(':');return +a*60+ +b};
+/* jam kerja non-lembur & lembur suatu hari (null jika tidak ada jam masuk/pulang) */
+function dayHrs(y,m,d){
+  const tm=S.tm[key(y,m,d)];
+  if(!tm||!tm[0]||!tm[1])return null;
+  const a=mn(tm[0]),b=mn(tm[1]);
+  if(!(b>a))return null;
+  const day=new Date(y,m,d).getDay();
+  const[bs1,be1]=S.brk[day]||S.brk[1],bs=mn(bs1),be=mn(be1);
+  const jk=+(Math.max(0,(b-a-Math.max(0,Math.min(b,be)-Math.max(a,bs)))/60)).toFixed(2);
+  // istirahat lembur dikurangi dari durasi setelah jam kerja normal
+  const[ob1,ob2]=S.brkOt[day]||['',''];
+  let otBrk=0;
+  if(ob1&&ob2){const obs=mn(ob1),obe=mn(ob2);otBrk=Math.max(0,Math.min(b,obe)-Math.max(a+S.hours*60,obs))/60;}
+  const lem=+Math.max(0,jk-S.hours-otBrk).toFixed(2);
+  const net=Math.max(0,+(jk-lem-otBrk).toFixed(2)); // non-lembur tanpa istirahat lembur
+  return{net,lem};
+}
 function wk(){
   if(!T.ti||!T.to)return null;
   const a=mn(T.ti),b=mn(T.to);
@@ -443,22 +466,11 @@ $('det').onclick=()=>{
     const k=key(y,m,d),off=isOff(y,m,d),dt=new Date(y,m,d);
     const hari=DN2[dt.getDay()];
     const tm=S.tm[k];
-    let masuk='-',pulang='-',jamKerja=0,jamLembur=0,nominal=0,otPay=0,otBrk=0,status='',styCls='';
+    let masuk='-',pulang='-',nominal=0,otPay=0,status='',styCls='';
     if(S.att[k]){
       status='Hadir';styCls='color:var(--had-tx)';
       if(tm){masuk=tm[0]||'-';pulang=tm[1]||'-';}
-      const otH=+S.ot[k]||0;
-      if(tm&&tm[0]&&tm[1]){
-        const a=mn(tm[0]),b=mn(tm[1]);
-        const day=dt.getDay(),brk=S.brk[day]||S.brk[1];
-        const bs=mn(brk[0]),be=mn(brk[1]);
-        jamKerja=+(Math.max(0,(b-a-Math.max(0,Math.min(b,be)-Math.max(a,bs)))/60)).toFixed(2);
-        // istirahat lembur
-        const brkOt=S.brkOt[day]||['',''];
-        if(brkOt[0]&&brkOt[1]){const obs=mn(brkOt[0]),obe=mn(brkOt[1]);otBrk=Math.max(0,Math.min(b,obe)-Math.max(a+S.hours*60,obs))/60;}
-        jamLembur=+Math.max(0,jamKerja-S.hours-otBrk).toFixed(2);
-      }
-      otPay=otH*c.otHour;nominal=c.perDay+otPay;
+      otPay=(+S.ot[k]||0)*c.otHour;
     }else if(S.lv[k]){
       status=LB[S.lv[k]];
       if(S.lv[k]==='alpa')styCls='color:var(--alp-tx)';
@@ -469,7 +481,10 @@ $('det').onclick=()=>{
     }else{
       status='—';styCls='color:var(--mu)';
     }
-    const kNet=Math.max(0,+(jamKerja-jamLembur-otBrk).toFixed(2)); // jam kerja non-lembur (tanpa istirahat lembur)
+    const H=S.att[k]?dayHrs(y,m,d):null;
+    const kNet=H?H.net:0,jamLembur=H?H.lem:0;
+    // gaji hari ini = jam efektif × tarif jam (keterlambatan tidak dibayar penuh) + lembur
+    if(S.att[k])nominal=(H?Math.min(kNet,S.hours):S.hours)*c.perHour+otPay;
     totalKerja+=kNet;totalLembur+=jamLembur;totalNominal+=nominal;runTotal+=nominal;
     totalGaji+=nominal-otPay;totalOt+=otPay;
     rows+=`<tr>
@@ -479,13 +494,13 @@ $('det').onclick=()=>{
       <td class="ct">${pulang}</td>
       <td class="ct">${kNet?+kNet.toFixed(1)+'j':'-'}</td>
       <td class="ct">${jamLembur?+jamLembur.toFixed(1)+'j':'-'}</td>
-      <td class="rp">${nominal?rp(c.perDay):'-'}</td>
+      <td class="rp">${nominal?rp(nominal-otPay):'-'}</td>
       <td class="rp">${otPay?rp(otPay):'-'}</td>
       <td class="rp" style="color:var(--ok)">${nominal&&S.att[k]?rp(runTotal):'-'}</td>
     </tr>`;
     expRows.push([`${String(d).padStart(2,'0')} ${hari}`,status,masuk,pulang,
       kNet?+kNet.toFixed(2):'',jamLembur?+jamLembur.toFixed(2):'',
-      nominal?Math.round(c.perDay):'',otPay?Math.round(otPay):'',
+      nominal?Math.round(nominal-otPay):'',otPay?Math.round(otPay):'',
       nominal&&S.att[k]?Math.round(runTotal):'']);
   }
   $('dtl-body').innerHTML=rows;
