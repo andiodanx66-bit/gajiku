@@ -75,16 +75,20 @@ button.p{background:var(--ok);color:var(--on-tx);border:0;font-weight:700}
 .lgd i{display:inline-block;width:10px;height:10px;border-radius:3px;flex-shrink:0}
 /* modal detail tabel */
 #dtl{width:min(96vw,520px)}
-.dtbl{width:100%;min-width:620px;border-collapse:collapse;font-size:12px;margin-top:12px}
-.dtbl th{background:var(--bg);color:var(--mu);padding:6px 4px;text-align:left;position:sticky;top:0;font-weight:600;white-space:nowrap}
-.dtbl td{padding:6px 4px;border-bottom:1px solid var(--ln);vertical-align:middle}
+.dtbl{width:100%;min-width:740px;border-collapse:collapse;font-size:12px;margin-top:12px}
+.dtbl th{background:var(--bg);color:var(--mu);padding:6px 4px;text-align:left;position:sticky;top:0;font-weight:600;white-space:nowrap;line-height:14px;box-shadow:inset 0 0 0 1px var(--ln)}/* garis grid di tiap sel header */
+/* header 2 baris: baris kedua menempel tepat di bawah baris pertama saat scroll */
+.dtbl thead tr:first-child th{top:0}
+.dtbl thead tr:last-child th{top:26px}
+/* semua label header rata tengah */
+.dtbl thead th,.dtbl thead th.rp{text-align:center}
+.dtbl td{padding:6px 4px;border-bottom:1px solid var(--ln);border-left:1px solid var(--ln);border-right:1px solid var(--ln);vertical-align:middle}/* grid tipis kiri-kanan antar kolom */
 .dtbl tr:last-child td{border-bottom:none}
 .dtbl .rp{text-align:right;white-space:nowrap}
 .dtbl .ct{text-align:center;white-space:nowrap}
-/* kolom nominal & total dilebarkan supaya angka muat satu baris */
-.dtbl th:nth-child(7),.dtbl td:nth-child(7),
-.dtbl th:nth-child(8),.dtbl td:nth-child(8){width:120px;min-width:120px}
-.dtbl th:nth-child(7),.dtbl td:nth-child(7){width:168px;min-width:168px}
+/* kolom gaji, lembur & total dilebarkan supaya angka muat satu baris */
+.dtbl tbody td:nth-child(7),.dtbl tbody td:nth-child(8){width:110px;min-width:110px}
+.dtbl tbody td:nth-child(9){width:140px;min-width:140px}
 .dtbl th:nth-child(1),.dtbl td:nth-child(1),
 .dtbl th:nth-child(2),.dtbl td:nth-child(2){min-width:72px}
 .sc{max-height:60vh;overflow:auto;border-radius:8px;background:var(--bg);-webkit-overflow-scrolling:touch}
@@ -203,7 +207,10 @@ input[type=number],input[type=email],input[type=password]{width:100%;padding:10p
 <div class="row"><button id="brc">Batal</button><button class="p" id="brs">Simpan</button></div></dialog>
 
 <dialog id="dtl"><b id="dtl-ttl"></b>
-<div class="sc"><table class="dtbl"><thead><tr><th>Tgl</th><th>Status</th><th>Masuk</th><th>Pulang</th><th class="ct">Kerja</th><th class="ct">Lembur</th><th class="rp">Nominal</th><th class="rp">Total</th></tr></thead><tbody id="dtl-body"></tbody></table></div>
+<div class="sc"><table class="dtbl"><thead>
+<tr><th rowspan="2">Tgl</th><th rowspan="2">Status</th><th rowspan="2">Masuk</th><th rowspan="2">Pulang</th><th class="ct" colspan="2">Jam kerja</th><th class="ct" colspan="2">Nominal</th><th rowspan="2" class="rp">Total</th></tr>
+<tr><th class="ct">Non-lembur</th><th class="ct">Lembur</th><th class="rp">Non-lembur</th><th class="rp">Lembur</th></tr>
+</thead><tbody id="dtl-body"></tbody></table></div>
 <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--ln)" id="dtl-sum"></div>
 <div class="row"><button id="dtl-c">Tutup</button></div></dialog>
 
@@ -426,12 +433,12 @@ $('det').onclick=()=>{
   const y=c.y,m=c.m;
   $('dtl-ttl').textContent='Detail Kehadiran – '+cur.toLocaleDateString('id-ID',{month:'long',year:'numeric'});
   const DN2=['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
-  let rows='',totalKerja=0,totalLembur=0,totalNominal=0,runTotal=0;
+  let rows='',totalKerja=0,totalLembur=0,totalNominal=0,runTotal=0,totalGaji=0,totalOt=0;
   for(let d=1;d<=c.n;d++){
     const k=key(y,m,d),off=isOff(y,m,d),dt=new Date(y,m,d);
     const hari=DN2[dt.getDay()];
     const tm=S.tm[k];
-    let masuk='-',pulang='-',jamKerja=0,jamLembur=0,nominal=0,otPay=0,status='',styCls='';
+    let masuk='-',pulang='-',jamKerja=0,jamLembur=0,nominal=0,otPay=0,otBrk=0,status='',styCls='';
     if(S.att[k]){
       status='Hadir';styCls='color:var(--had-tx)';
       if(tm){masuk=tm[0]||'-';pulang=tm[1]||'-';}
@@ -443,7 +450,6 @@ $('det').onclick=()=>{
         jamKerja=+(Math.max(0,(b-a-Math.max(0,Math.min(b,be)-Math.max(a,bs)))/60)).toFixed(2);
         // istirahat lembur
         const brkOt=S.brkOt[day]||['',''];
-        let otBrk=0;
         if(brkOt[0]&&brkOt[1]){const obs=mn(brkOt[0]),obe=mn(brkOt[1]);otBrk=Math.max(0,Math.min(b,obe)-Math.max(a+S.hours*60,obs))/60;}
         jamLembur=+Math.max(0,jamKerja-S.hours-otBrk).toFixed(2);
       }
@@ -458,23 +464,28 @@ $('det').onclick=()=>{
     }else{
       status='—';styCls='color:var(--mu)';
     }
-    totalKerja+=jamKerja;totalLembur+=jamLembur;totalNominal+=nominal;runTotal+=nominal;
+    const kNet=Math.max(0,+(jamKerja-jamLembur-otBrk).toFixed(2)); // jam kerja non-lembur (tanpa istirahat lembur)
+    totalKerja+=kNet;totalLembur+=jamLembur;totalNominal+=nominal;runTotal+=nominal;
+    totalGaji+=nominal-otPay;totalOt+=otPay;
     rows+=`<tr>
       <td>${String(d).padStart(2,'0')} ${hari}</td>
       <td style="${styCls}">${status}</td>
       <td class="ct">${masuk}</td>
       <td class="ct">${pulang}</td>
-      <td class="ct">${jamKerja?+jamKerja.toFixed(1)+'j':'-'}</td>
+      <td class="ct">${kNet?+kNet.toFixed(1)+'j':'-'}</td>
       <td class="ct">${jamLembur?+jamLembur.toFixed(1)+'j':'-'}</td>
-      <td class="rp">${nominal?(otPay?rp(c.perDay)+' + '+rp(otPay):rp(nominal)):'-'}</td>
+      <td class="rp">${nominal?rp(c.perDay):'-'}</td>
+      <td class="rp">${otPay?rp(otPay):'-'}</td>
       <td class="rp" style="color:var(--ok)">${nominal&&S.att[k]?rp(runTotal):'-'}</td>
     </tr>`;
   }
   $('dtl-body').innerHTML=rows;
   $('dtl-sum').innerHTML=`<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:13px">
-    <span style="color:var(--mu)">Total kerja <b style="color:var(--tx)">${+totalKerja.toFixed(1)} jam</b></span>
+    <span style="color:var(--mu)">Non-lembur <b style="color:var(--tx)">${+totalKerja.toFixed(1)} jam</b></span>
     <span style="color:var(--mu)">Lembur <b style="color:var(--ot)">${+totalLembur.toFixed(1)} jam</b></span>
-    <span style="color:var(--mu)">Gaji sementara <b style="color:var(--ok)">${rp(c.pd*c.perDay+c.otPay)}</b></span>
+    <span style="color:var(--mu)">Non-lembur <b style="color:var(--tx)">${rp(totalGaji)}</b></span>
+    <span style="color:var(--mu)">Lembur <b style="color:var(--ot)">${rp(totalOt)}</b></span>
+    <span style="color:var(--mu)">Gaji sementara <b style="color:var(--ok)">${rp(totalGaji+totalOt)}</b></span>
   </div>`;
   $('dtl').showModal();
 };
