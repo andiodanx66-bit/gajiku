@@ -371,8 +371,11 @@ function dayHrs(y,m,d){
   const[ob1,ob2]=S.brkOt[day]||['',''];
   let otBrk=0;
   if(ob1&&ob2){const obs=mn(ob1),obe=mn(ob2);otBrk=Math.max(0,Math.min(b,obe)-Math.max(a+S.hours*60,obs))/60;}
-  const lem=+Math.max(0,jk-S.hours-otBrk).toFixed(2);
-  const net=Math.max(0,+(jk-lem-otBrk).toFixed(2)); // non-lembur tanpa istirahat lembur
+  // keterlambatan mengurangi jatah jam kerja non-lembur, BUKAN jatah lembur
+  const late=S.dIn?Math.max(0,a-mn(S.dIn)):0;
+  const quota=Math.max(0,S.hours-late/60);
+  const lem=+Math.max(0,jk-quota-otBrk).toFixed(2);
+  const net=Math.max(0,+(jk-lem-otBrk).toFixed(2)); // non-lembur (tanpa istirahat lembur)
   return{net,lem};
 }
 function wk(){
@@ -385,13 +388,16 @@ function wk(){
   const[ob1,ob2]=S.brkOt[day]||['',''];
   let otBrk=0;
   if(ob1&&ob2){const obs=mn(ob1),obe=mn(ob2);otBrk=Math.max(0,Math.min(b,obe)-Math.max(a+S.hours*60,obs))/60;}
-  const ot=Math.max(0,w-S.hours-otBrk);
-  return{ok,w,ot,b1,b2,ob1,ob2,otBrk};
+  const late=S.dIn?Math.max(0,a-mn(S.dIn)):0; // telat → jatah non-lembur berkurang, lembur tetap
+  const quota=Math.max(0,S.hours-late/60);
+  const ot=Math.max(0,w-quota-otBrk);
+  return{ok,w,ot,b1,b2,ob1,ob2,otBrk,late,quota};
 }
 function onT(){
   const k=wk();if(!k){$('inf').textContent='';return}
   let msg=k.ok?`Jam kerja ${+k.w.toFixed(2)} jam · Lembur ${+k.ot.toFixed(2)} jam (istirahat ${k.b1}–${k.b2} dikurangi`:'Jam pulang harus setelah jam masuk';
   if(k.ok&&k.ob1&&k.ob2)msg+=`, ist. lembur ${k.ob1}–${k.ob2} dikurangi`;
+  if(k.ok&&k.late>0)msg+=`, terlambat ${Math.round(k.late)} menit → non-lembur ${+k.quota.toFixed(2)} jam`;
   if(k.ok)msg+=')';
   $('inf').textContent=msg;
   if(k.w>0){$('ha').checked=true;$('na').checked=false;lvSel=null;showLv()}
