@@ -119,6 +119,11 @@ input[type=number],input[type=email],input[type=password]{width:100%;padding:10p
 .tgl{width:40px;height:40px;padding:0;font-size:18px;line-height:1;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
 #tgl-auth{position:fixed;top:max(12px,env(safe-area-inset-top));right:12px;z-index:50}
 [data-theme="light"] .tgl{box-shadow:0 2px 8px #0002}
+/* dropdown akun (klik username) */
+#udm{position:absolute;top:100%;left:0;min-width:190px;margin-top:6px;background:var(--card);border:1px solid var(--ln);border-radius:10px;box-shadow:0 8px 24px #0003;overflow:hidden;z-index:60}
+#udm em{display:block;font-style:normal;padding:10px 12px;font-size:12px;color:var(--mu);border-bottom:1px solid var(--ln);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#udm button{width:100%;border:0;border-radius:0;background:none;text-align:left;padding:11px 12px;color:var(--err-tx)}
+#udm button:hover,#udm button:focus{background:var(--bg)}
 /* sync status */
 #sync{position:fixed;bottom:env(safe-area-inset-bottom,12px);right:12px;font-size:11px;color:var(--mu);opacity:0;transition:opacity .4s}
 #sync.show{opacity:1}
@@ -144,8 +149,8 @@ input[type=number],input[type=email],input[type=password]{width:100%;padding:10p
 
 <!-- APP -->
 <div id="app" class="hid">
-<div class="top"><h1>💰 Gajiku</h1><div style="display:flex;gap:8px"><button class="tgl" id="tgl-app" title="Ganti tema" aria-label="Ganti tema">🌙</button><button id="set">⚙️ Pengaturan</button><button id="logout" title="Keluar" style="padding:8px 10px">↩</button></div></div>
-<div class="nav"><button id="prev">‹</button><b id="ttl"></b><div style="display:flex;gap:6px"><button id="next">›</button><button id="ahl" title="Atur hari libur bulan ini">🗓️</button></div></div>
+<div class="top"><div style="position:relative"><h1 id="hd" title="Menu akun" style="cursor:pointer">💰 Gajiku</h1><div id="udm" class="hid"><em id="udm-em"></em><button id="udm-out">↩ Keluar</button></div></div><div style="display:flex;gap:8px"><button class="tgl" id="tgl-app" title="Ganti tema" aria-label="Ganti tema">🌙</button><button id="ahl" title="Atur hari libur bulan ini" style="padding:8px 10px">🗓️</button><button id="set" title="Pengaturan" aria-label="Pengaturan">⚙️</button></div></div>
+<div class="nav"><button id="prev">‹</button><b id="ttl"></b><button id="next">›</button></div>
 <div class="grid" id="sum"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
 <div class="lgd" style="margin-top:0">
@@ -171,7 +176,7 @@ input[type=number],input[type=email],input[type=password]{width:100%;padding:10p
 <button class="dl" id="dl">Hapus data</button>
 <div class="row"><button id="dc">Batal</button><button class="p" id="dsv">Simpan</button></div></dialog>
 
-<dialog id="st"><b>Pengaturan</b>
+<dialog id="st" tabindex="-1"><b>Pengaturan</b>
 <label>Gaji per bulan (Rp)</label><input type="number" id="sal" inputmode="numeric">
 <label>Jam kerja per hari</label><input type="number" id="hrs" step="0.5" inputmode="decimal">
 <label>Pengali lembur (1, 1.5, 2, bebas)</label><input type="number" id="mul" step="0.1" inputmode="decimal">
@@ -202,7 +207,7 @@ input[type=number],input[type=email],input[type=password]{width:100%;padding:10p
 <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--ln)" id="dtl-sum"></div>
 <div class="row"><button id="dtl-c">Tutup</button></div></dialog>
 
-<dialog id="hl"><b id="hl-ttl">🗓️ Hari Libur Nasional</b>
+<dialog id="hl" tabindex="-1"><b id="hl-ttl">🗓️ Hari Libur Nasional</b>
 <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
   <input type="date" id="hl-dt" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--ln);background:var(--bg);color:var(--tx);font:inherit">
   <div style="display:flex;gap:8px">
@@ -263,6 +268,13 @@ const save=()=>{
 };
 
 const $=id=>document.getElementById(id);
+/* buka dialog tanpa memfokuskan input di dalamnya (mencegah keyboard android langsung naik) */
+function openDlg(el){
+  el.showModal();
+  const a=document.activeElement;
+  if(a&&a!==el&&el.contains(a))a.blur();
+  el.focus();
+}
 
 /* ── TEMA (putih / gelap) ── */
 const TK='gaji-theme';
@@ -511,7 +523,7 @@ $('ahl').onclick=()=>{
   $('hl-nm').value='';
   $('hl-add').textContent='+ Tambah';
   $('hl-ttl').textContent='🗓️ Libur – '+cur.toLocaleDateString('id-ID',{month:'long',year:'numeric'});
-  renderHolList();$('hl').showModal();
+  renderHolList();openDlg($('hl'));
 };
 $('hl-add').onclick=()=>{
   const d=$('hl-dt').value,n=$('hl-nm').value.trim();
@@ -528,7 +540,7 @@ $('hl-dt').onclick=()=>{try{$('hl-dt').showPicker();}catch(e){}};
 $('set').onclick=()=>{$('sal').value=S.salary;$('hrs').value=S.hours;$('mul').value=S.mult;
   setT('sin',S.dIn);setT('sout',S.dOut);
   [0,1,2,3,4,5,6].forEach(d=>$('wd_'+d).checked=S.wdays.includes(d));
-  ['sakit','izin','cuti'].forEach(k=>$('pd_'+k).checked=!!S.paid[k]);$('st').showModal()};
+  ['sakit','izin','cuti'].forEach(k=>$('pd_'+k).checked=!!S.paid[k]);openDlg($('st'))};
 $('sc').onclick=()=>$('st').close();
 $('ssv').onclick=()=>{S.salary=+$('sal').value||S.salary;S.hours=+$('hrs').value||S.hours;S.mult=+$('mul').value||S.mult;
   S.dIn=T.sin||S.dIn;S.dOut=T.sout||S.dOut;
@@ -563,12 +575,17 @@ $('prev').onclick=()=>{cur.setMonth(cur.getMonth()-1);render()};
 $('next').onclick=()=>{cur.setMonth(cur.getMonth()+1);render()};
 
 /* ── AUTH ── */
+let hdNm='💰 Gajiku',hdMail='';
 function showApp(){$('tgl-auth').classList.add('hid');$('auth-wrap').classList.add('hid');$('app').classList.remove('hid');render();}
 function showAuth(){$('tgl-auth').classList.remove('hid');$('auth-wrap').classList.remove('hid');$('app').classList.add('hid');}
 
 async function loadFromSupabase(){
   const{data:{user}}=await sb.auth.getUser();
   if(!user)return;
+  const m=user.user_metadata||{};
+  hdNm=m.name||m.full_name||m.user_name||(user.email?user.email.split('@')[0]:'');
+  hdMail=user.email||'';
+  $('hd').textContent=hdNm;
   const{data,error}=await sb.from('gaji_state').select('data').eq('user_id',user.id).single();
   if(data&&data.data){
     applyState(data.data);
@@ -608,8 +625,17 @@ $('auth-forgot').onclick=async(e)=>{
   $('auth-err').style.color='var(--ok)';$('auth-err').textContent='Link reset dikirim ke email kamu';
 };
 
-$('logout').onclick=async()=>{
+$('hd').onclick=e=>{
+  e.stopPropagation();
+  if($('udm').classList.contains('hid')){$('udm-em').textContent=hdMail||hdNm;$('udm').classList.remove('hid');}
+  else $('udm').classList.add('hid');
+};
+$('udm').onclick=e=>e.stopPropagation();
+document.onclick=()=>$('udm').classList.add('hid'); // tutup saat klik di luar
+$('udm-out').onclick=async()=>{
+  $('udm').classList.add('hid');
   await sb.auth.signOut();
+  hdNm='💰 Gajiku';hdMail='';$('hd').textContent=hdNm;
   showAuth();
 };
 
