@@ -54,9 +54,11 @@ button.p{background:var(--ok);color:var(--on-tx);border:0;font-weight:700}
 .card small{color:var(--mu);display:block;font-size:11px}
 .card b{font-size:15px}
 .tot{background:var(--tot)}
-.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:12px}
+/* minmax(0,1fr) → kolom benar-benar fixed (1fr biasa = minmax(auto,1fr),
+   min-content cell bisa melebarkan kolom & membuat kalender kebablasan layar) */
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-top:12px}
 .dh{text-align:center;color:var(--mu);font-size:11px;padding:2px}
-.d{min-height:58px;background:var(--card);border-radius:8px;padding:4px;font-size:11px;border:1px solid transparent;display:flex;flex-direction:column;justify-content:space-between;text-align:left;color:var(--d-tx)}
+.d{min-height:58px;background:var(--card);border-radius:8px;padding:4px;font-size:11px;border:1px solid transparent;display:flex;flex-direction:column;justify-content:space-between;text-align:left;color:var(--d-tx);min-width:0;overflow:hidden}
 .d span{font-size:13px;font-weight:600;color:var(--d-tx)}
 .d span i{font-size:10px;margin-left:1px}/* checklist hadir di samping tanggal */
 .d em{font-style:normal;color:var(--d-tx)}
@@ -70,6 +72,9 @@ button.p{background:var(--ok);color:var(--on-tx);border:0;font-weight:700}
 .d.alpa{background:var(--alp-bg);border-color:var(--alp-bd);color:var(--d-tx)}
 .d.today{outline:2px solid var(--lv);outline-offset:1px}
 .d.x{visibility:hidden}
+/* teks di dalam cell tidak boleh melebarkan kolom: bungkus/rapikan saja */
+.d em,.d u,.d i,.d div{overflow-wrap:anywhere;min-width:0}
+.d .hol{font-size:10px;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3}
 .lgd{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:10px;justify-content:center}
 .lgd span{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--mu)}
 .lgd i{display:inline-block;width:10px;height:10px;border-radius:3px;flex-shrink:0}
@@ -372,11 +377,13 @@ function render(){
     let cls='';
     if(S.att[k]){const tmS=S.tm[k]||['',''];const H=dayHrs(c.y,c.m,d);
       if(!H&&tmS[0]&&!tmS[1])mid=`<em style="font-size:9px">${tmS[0]}…</em>`; // baru masuk, pulang belum
-      else{const jamH=+(H?H.net:S.hours).toFixed(1);const jamO=o?+o.toFixed(1):0;mid=`<em style="font-size:9px">${jamH}jam${jamO?'+'+jamO+'jam':''}</em>`;}
+      else{const jamH=+(H?H.net:S.hours).toFixed(1);mid=`<em style="font-size:9px">${jamH}jam</em>`;}
       cls='hadir';}
     else if(S.lv[k]){mid=`<u>${LB[S.lv[k]]}</u>`;cls=S.lv[k];}
-    else if(off){const holName=S.holMap&&S.holMap[k];mid=`<div style="font-size:10px;line-height:1.2">${holName||'libur'}</div>`;cls='off';}
-    h+=`<button class="d ${cls} ${tod?'today':''}" data-d="${d}"><span>${d}${S.att[k]?'<i>✓</i>':''}</span>${mid}${(!S.att[k]&&o)?`<i class="ot" style="font-size:9px">+${+o.toFixed(1)}jam</i>`:''}</button>`;
+    else if(off){const holName=S.holMap&&S.holMap[k];mid=`<div class="hol">${holName||'libur'}</div>`;cls='off';}
+    /* lembur selalu baris terpisah (digabung "8,5jam+2,5jam" membuat cell melebar) */
+    const otEl=o?`<i class="ot" style="font-size:9px">+${+o.toFixed(1)}jam</i>`:'';
+    h+=`<button class="d ${cls} ${tod?'today':''}" data-d="${d}"><span>${d}${S.att[k]?'<i>✓</i>':''}</span>${mid}${otEl}</button>`;
   }
   $('cal').innerHTML=h;
 }
