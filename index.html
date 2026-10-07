@@ -102,6 +102,8 @@ input[type=number],input[type=email],input[type=password]{width:100%;padding:10p
 .t2{display:flex;gap:8px}.t2>div{flex:1}
 .tb{width:100%;padding:10px;font-size:16px;background:var(--bg)}
 #inf{color:var(--mu);font-size:12px;margin-top:6px;min-height:16px}
+/* info nominal non-lembur & lembur di modal absen */
+#ds-nom{margin-top:8px;padding:8px 10px;background:var(--bg);border:1px solid var(--ln);border-radius:8px;font-size:12px;color:var(--mu);display:flex;flex-wrap:wrap;gap:4px 14px}
 .nm{width:100%;margin-top:10px}
 .chips{display:flex;gap:8px;margin-top:8px}.chip{flex:1}
 .chip.on{background:var(--lv);color:var(--lv-tx);border:0;font-weight:700}
@@ -169,6 +171,25 @@ input[type=number],input[type=email],input[type=password]{width:100%;padding:10p
 <p class="note">Ketuk tanggal untuk absen. Lembur dihitung dari jam pulang. Hari kerja bisa diatur di Pengaturan.</p>
 </div><!-- /app -->
 
+<script>
+/* Sembunyikan layar login sejak awal parse DOM jika ada session Supabase
+   tersimpan di localStorage → refresh jadi smooth, tanpa kedip halaman login.
+   Layar login hanya muncul jika tidak ada session sama sekali. */
+(function(){
+  var hasSession=false;
+  try{
+    hasSession=Object.keys(localStorage).some(function(k){
+      return k.indexOf('sb-')===0&&k.indexOf('-auth-token')>-1;
+    });
+  }catch(e){}
+  if(hasSession){
+    document.getElementById('auth-wrap').classList.add('hid');
+    document.getElementById('tgl-auth').classList.add('hid');
+    document.getElementById('app').classList.remove('hid');
+  }
+})();
+</script>
+
 <div id="sync"></div>
 
 <dialog id="ds"><b id="dt"></b>
@@ -177,6 +198,7 @@ input[type=number],input[type=email],input[type=password]{width:100%;padding:10p
 <div class="chips hid" id="lvr"><button class="chip" data-t="sakit">Sakit</button><button class="chip" data-t="izin">Izin</button><button class="chip" data-t="cuti">Cuti</button><button class="chip" data-t="alpa">Alpa</button></div>
 <div class="t2" id="tblock"><div><label>Jam masuk</label><button class="tb" id="ti"></button></div><div><label>Jam pulang</label><button class="tb" id="to"></button></div></div>
 <div id="inf"></div>
+<div id="ds-nom" class="hid"></div>
 <button class="dl" id="dl">Hapus data</button>
 <div class="row"><button id="dc">Batal</button><button class="p" id="dsv">Simpan</button></div></dialog>
 
@@ -319,7 +341,9 @@ function calc(){
   // gaji: hari hadir dibayar sesuai jam efektif — keterlambatan/pulang cepat tidak dibayar penuh
   let pay=0;
   for(let d=1;d<=n;d++){const k=key(y,m,d);
-    if(S.att[k]){const H=dayHrs(y,m,d);pay+=(H?Math.min(H.net,S.hours):S.hours)*perHour+(+S.ot[k]||0)*otHour;continue}
+    if(S.att[k]){const tmA=S.tm[k];
+      if(tmA&&tmA[0]&&!tmA[1])continue; // pulang belum diisi → gaji belum dihitung
+      const H=dayHrs(y,m,d);pay+=(H?Math.min(H.net,S.hours):S.hours)*perHour+(+S.ot[k]||0)*otHour;continue}
     if(S.lv[k]&&S.paid[S.lv[k]])pay+=perDay;
   }
   return{y,m,n,wd,hd,pd:hd+pl,lc,perDay,perHour,otHour,oh,otPay:oh*otHour,pay};
@@ -346,10 +370,13 @@ function render(){
     const tod=t.getFullYear()==c.y&&t.getMonth()==c.m&&t.getDate()==d;
     let mid='<div></div>';
     let cls='';
-    if(S.att[k]){const H=dayHrs(c.y,c.m,d);mid=`<em style="font-size:9px">${rn((H?Math.min(H.net,S.hours):S.hours)*c.perHour)}</em>`;cls='hadir';}
+    if(S.att[k]){const tmS=S.tm[k]||['',''];const H=dayHrs(c.y,c.m,d);
+      if(!H&&tmS[0]&&!tmS[1])mid=`<em style="font-size:9px">${tmS[0]}…</em>`; // baru masuk, pulang belum
+      else{const jamH=+(H?H.net:S.hours).toFixed(1);const jamO=o?+o.toFixed(1):0;mid=`<em style="font-size:9px">${jamH}jam${jamO?'+'+jamO+'jam':''}</em>`;}
+      cls='hadir';}
     else if(S.lv[k]){mid=`<u>${LB[S.lv[k]]}</u>`;cls=S.lv[k];}
     else if(off){const holName=S.holMap&&S.holMap[k];mid=`<div style="font-size:10px;line-height:1.2">${holName||'libur'}</div>`;cls='off';}
-    h+=`<button class="d ${cls} ${tod?'today':''}" data-d="${d}"><span>${d}${S.att[k]?'<i>✓</i>':''}</span>${mid}`+(o?`<i class="ot" style="font-size:9px">+${rn(o*c.otHour)}</i>`:'')+`</button>`;
+    h+=`<button class="d ${cls} ${tod?'today':''}" data-d="${d}"><span>${d}${S.att[k]?'<i>✓</i>':''}</span>${mid}${(!S.att[k]&&o)?`<i class="ot" style="font-size:9px">+${+o.toFixed(1)}jam</i>`:''}</button>`;
   }
   $('cal').innerHTML=h;
 }
@@ -394,13 +421,35 @@ function wk(){
   return{ok,w,ot,b1,b2,ob1,ob2,otBrk,late,quota};
 }
 function onT(){
-  const k=wk();if(!k){$('inf').textContent='';return}
+  const c=calc();
+  const box=$('ds-nom');
+  if($('na').checked){ // mode "Tidak masuk"
+    if(lvSel&&S.paid[lvSel]){box.innerHTML=`<span>Tetap dibayar <b style="color:var(--tx)">${rp(c.perDay)}</b></span>`;box.classList.remove('hid');}
+    else{box.classList.add('hid');}
+    $('inf').textContent='';
+    return;
+  }
+  const k=wk();
+  if(!T.ti){box.classList.add('hid');$('inf').textContent='';return}
+  if(!T.to){ // baru jam masuk saja — boleh disimpan, pulang diisi nanti
+    box.classList.add('hid');
+    $('inf').textContent='Jam masuk terisi — jam pulang bisa diisi nanti lalu Simpan lagi';
+    $('ha').checked=true;$('na').checked=false;lvSel=null;showLv();
+    return;
+  }
+  if(!k){box.classList.add('hid');$('inf').textContent='';return}
   let msg=k.ok?`Jam kerja ${+k.w.toFixed(2)} jam · Lembur ${+k.ot.toFixed(2)} jam (istirahat ${k.b1}–${k.b2} dikurangi`:'Jam pulang harus setelah jam masuk';
   if(k.ok&&k.ob1&&k.ob2)msg+=`, ist. lembur ${k.ob1}–${k.ob2} dikurangi`;
   if(k.ok&&k.late>0)msg+=`, terlambat ${Math.round(k.late)} menit → non-lembur ${+k.quota.toFixed(2)} jam`;
   if(k.ok)msg+=')';
   $('inf').textContent=msg;
   if(k.w>0){$('ha').checked=true;$('na').checked=false;lvSel=null;showLv()}
+  // info total nominal non-lembur & lembur untuk hari ini
+  if(k.ok){
+    const net=Math.max(0,k.w-k.ot-k.otBrk); // jam non-lembur efektif
+    box.innerHTML=`<span>Non-lembur <b style="color:var(--tx)">${rp(net*c.perHour)}</b></span><span>Lembur <b style="color:var(--tx)">${rp(k.ot*c.otHour)}</b></span><span>Total <b style="color:var(--ok)">${rp(net*c.perHour+k.ot*c.otHour)}</b></span>`;
+    box.classList.remove('hid');
+  }else box.classList.add('hid');
 }
 /* picker jam buatan sendiri */
 let tid=null;
@@ -429,28 +478,30 @@ function showLv(){
 }
 $('cal').onclick=e=>{const b=e.target.closest('.d[data-d]');if(!b)return;
   sel=key(cur.getFullYear(),cur.getMonth(),+b.dataset.d);
-  const[yy,mm,dd]=sel.split('-').map(Number),off=isOff(yy,mm-1,dd),lv=S.lv[sel];
+  const[yy,mm,dd]=sel.split('-').map(Number),lv=S.lv[sel];
   $('dt').textContent=new Date(sel+'T00:00').toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long'});
   $('ha').checked=!!S.att[sel];lvSel=lv||null;$('na').checked=!!lv;
-  const tm=S.tm[sel]||(lv?['','']:[S.dIn,S.dOut]);
+  const tm=S.tm[sel]||['','']; // tidak default-isi jam pulang → input bertahap (masuk pagi, pulang sore)
   setT('ti',tm[0]);setT('to',tm[1]);onT();
   showLv();$('dl').textContent='Hapus data';dlc=false;$('ds').showModal()};
-$('ha').onchange=()=>{if($('ha').checked){$('na').checked=false;lvSel=null;showLv();if(!T.ti)setT('ti',S.dIn);if(!T.to)setT('to',S.dOut);onT()}
-  else{setT('ti','');setT('to','');$('inf').textContent=''}};
-$('na').onchange=()=>{if($('na').checked){$('ha').checked=false;setT('ti','');setT('to','');$('inf').textContent=''}else{lvSel=null;}showLv()};
-document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{lvSel=c.dataset.t;showLv();$('inf').textContent=''});
+$('ha').onchange=()=>{if($('ha').checked){$('na').checked=false;lvSel=null;showLv();if(!T.ti)setT('ti',S.dIn);onT()}
+  else{setT('ti','');setT('to','');$('inf').textContent='';$('ds-nom').classList.add('hid')}};
+$('na').onchange=()=>{if($('na').checked){$('ha').checked=false;setT('ti','');setT('to','');}else{lvSel=null;}showLv();onT()};
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{lvSel=c.dataset.t;showLv();onT()});
 $('dc').onclick=()=>$('ds').close();
 $('dsv').onclick=()=>{
   if($('na').checked){
     if(!lvSel){$('inf').textContent='Pilih Sakit / Izin / Cuti / Alpa';return}
     S.lv[sel]=lvSel;delete S.att[sel];delete S.tm[sel];delete S.ot[sel];
   }else{
+    if(!T.ti&&!T.to&&!$('ha').checked){$('inf').textContent='Isi jam masuk dulu (atau centang Hadir)';return}
     const k=wk();
     if(k&&!k.ok){$('inf').textContent='Jam pulang harus setelah jam masuk';return}
     delete S.lv[sel];
-    if(k)S.tm[sel]=[T.ti,T.to];else delete S.tm[sel];
-    if(k&&k.ot>0)S.ot[sel]=+k.ot.toFixed(2);else delete S.ot[sel];
-    if($('ha').checked||(k&&k.w>0))S.att[sel]=1;else delete S.att[sel];
+    if(T.ti||T.to){S.tm[sel]=[T.ti,T.to];$('ha').checked=true;} // simpan bertahap: boleh baru jam masuk
+    else delete S.tm[sel];
+    if(k&&k.ot>0)S.ot[sel]=+k.ot.toFixed(2);else delete S.ot[sel]; // lembur baru terhitung saat pulang terisi
+    if($('ha').checked||(k&&k.w>0)||(T.ti&&!T.to))S.att[sel]=1;else delete S.att[sel];
   }
   save();$('ds').close();render()};
 $('dl').onclick=()=>{
@@ -693,7 +744,11 @@ function showAuth(){$('tgl-auth').classList.remove('hid');$('auth-wrap').classLi
 
 async function loadFromSupabase(){
   const{data:{user}}=await sb.auth.getUser();
-  if(!user)return;
+  if(!user){
+    // token tidak valid/expired → kembali ke layar login
+    showAuth();
+    return;
+  }
   const m=user.user_metadata||{};
   hdNm=m.name||m.full_name||m.user_name||(user.email?user.email.split('@')[0]:'');
   hdMail=user.email||'';
@@ -702,6 +757,7 @@ async function loadFromSupabase(){
   if(data&&data.data){
     applyState(data.data);
     try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}
+    render(); // refresh tampilan dengan data terbaru dari server
   }
   showApp();
 }
@@ -748,14 +804,23 @@ $('udm-out').onclick=async()=>{
   $('udm').classList.add('hid');
   await sb.auth.signOut();
   hdNm='💰 Gajiku';hdMail='';$('hd').textContent=hdNm;
+  // kosongkan field login supaya tidak tersisa email/password lama
+  $('auth-email').value='';$('auth-pass').value='';$('auth-err').textContent='';
+  $('auth-sub').textContent='Masuk ke akun kamu';
   showAuth();
 };
 
-// cek session aktif saat load
+// cek session aktif saat load — tampilkan app dulu dari cache (tanpa kedip login),
+// lalu sync data Supabase di background. Login hanya muncul jika benar-benar belum login.
 (async()=>{
-  const{data:{session}}=await sb.auth.getSession();
-  if(session){await loadFromSupabase();}
-  else showAuth();
+  let session=null;
+  try{session=(await sb.auth.getSession()).data.session;}catch(e){}
+  if(session){
+    showApp();                    // langsung tampil dari data lokal
+    await loadFromSupabase().catch(()=>{}); // tarik data terbaru; kalau gagal tetap bisa pakai cache
+  }else{
+    showAuth();
+  }
 })();
 
 if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(()=>{}));
