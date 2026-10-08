@@ -1,4 +1,4 @@
-const CV = 'gaji-v10';
+const CV = 'gaji-v11';
 const ASSETS = [
   '/',
   '/index.html',
