@@ -97,6 +97,14 @@ button.p{background:var(--ok);color:var(--on-tx);border:0;font-weight:700}
 .dtbl th:nth-child(1),.dtbl td:nth-child(1),
 .dtbl th:nth-child(2),.dtbl td:nth-child(2){min-width:72px}
 .sc{max-height:60vh;overflow:auto;border-radius:8px;background:var(--bg);-webkit-overflow-scrolling:touch}
+/* landscape: modal detail kehadiran melebar memenuhi layar */
+@media (orientation:landscape){
+#dtl{width:min(96vw,1100px);padding:12px 16px;max-height:92vh;overflow-y:auto;display:flex;flex-direction:column}
+#dtl .sc{flex:1;min-height:0;max-height:none}
+#dtl .row{justify-content:flex-end}
+#dtl .row button{flex:0 1 170px}
+.dtbl{font-size:13px}
+}
 dialog{background:var(--card);color:var(--tx);border:0;border-radius:14px;padding:16px;width:min(92vw,380px);margin:auto;max-height:90vh;overflow-y:auto}
 dialog::backdrop{background:var(--bd)}
 input[type=checkbox]{accent-color:var(--ok)}
@@ -202,7 +210,7 @@ input[type=text],input[type=date]{width:100%;padding:10px;border-radius:8px;bord
 #fn-cat .chip{flex:0 0 auto;padding:8px 10px;font-size:12px}
 #fn-inf{color:var(--err-tx);font-size:12px;margin-top:6px;min-height:16px}
 </style></head><body>
-<button class="tgl" id="tgl-auth" title="Ganti tema" aria-label="Ganti tema">🌙</button>
+<button class="tgl theme-tgl" id="tgl-auth" title="Ganti tema" aria-label="Ganti tema">🌙</button>
 <!-- AUTH SCREEN -->
 <div id="auth-wrap">
   <div id="auth-box">
@@ -223,7 +231,7 @@ input[type=text],input[type=date]{width:100%;padding:10px;border-radius:8px;bord
 
 <!-- APP -->
 <div id="app" class="hid">
-<div class="top"><div style="position:relative"><h1 id="hd" title="Menu akun" style="cursor:pointer">💰 Gajiku</h1><div id="udm" class="hid"><em id="udm-em"></em><button id="udm-out">↩ Keluar</button></div></div><div style="display:flex;gap:8px"><button class="tgl" id="rot" title="Putar layar ke landscape" aria-label="Putar layar ke landscape" aria-pressed="false"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3.5" width="6" height="17" rx="1.8"/><path d="M6.2 8.4a7 7 0 0 0 0 7.2"/><path d="M4.4 13.6l1.8 2 1.8-2"/><path d="M17.8 15.6a7 7 0 0 0 0-7.2"/><path d="M16 10.4l1.8-2 1.8 2"/></g></svg></button><button class="tgl" id="tgl-app" title="Ganti tema" aria-label="Ganti tema">🌙</button><button id="ahl" title="Atur hari libur bulan ini" style="padding:8px 10px">🗓️</button><button id="set" title="Pengaturan" aria-label="Pengaturan">⚙️</button></div></div>
+<div class="top"><div style="position:relative"><h1 id="hd" title="Menu akun" style="cursor:pointer">💰 Gajiku</h1><div id="udm" class="hid"><em id="udm-em"></em><button id="udm-out">↩ Keluar</button></div></div><div style="display:flex;gap:8px"><button class="tgl" id="rot" title="Putar layar ke landscape" aria-label="Putar layar ke landscape" aria-pressed="false"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1.06 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></g></svg></button><button class="tgl theme-tgl" id="tgl-app" title="Ganti tema" aria-label="Ganti tema">🌙</button><button id="ahl" title="Atur hari libur bulan ini" style="padding:8px 10px">🗓️</button><button id="set" title="Pengaturan" aria-label="Pengaturan">⚙️</button></div></div>
 <section id="pg-gaji">
 <div class="nav"><button id="prev">‹</button><b id="ttl"></b><button id="next">›</button></div>
 <div class="grid" id="sum"></div>
@@ -420,11 +428,11 @@ document.documentElement.style.background=t==='light'?'#f1f5f9':'#0f172a';
 try{localStorage.setItem(TK,t)}catch(e){}
 $('tmc').setAttribute('content',t==='light'?'#f1f5f9':'#0f172a');
 const ic=t==='light'?'☀️':'🌙';
-document.querySelectorAll('.tgl').forEach(b=>{
+document.querySelectorAll('.theme-tgl').forEach(b=>{
 if(b.textContent!==ic){b.textContent=ic;b.setAttribute('aria-label',t==='light'?'Aktifkan tema gelap':'Aktifkan tema terang')}
 });
 };
-document.querySelectorAll('.tgl').forEach(b=>b.onclick=()=>setTheme(document.documentElement.dataset.theme==='light'?'dark':'light'));
+document.querySelectorAll('.theme-tgl').forEach(b=>b.onclick=()=>setTheme(document.documentElement.dataset.theme==='light'?'dark':'light'));
 setTheme(document.documentElement.dataset.theme);
 matchMedia('(prefers-color-scheme: light)').addEventListener('change',e=>{
 let s=null;try{s=localStorage.getItem(TK)}catch(err){}
