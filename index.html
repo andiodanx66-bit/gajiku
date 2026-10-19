@@ -70,6 +70,7 @@ button.p{background:var(--ok);color:var(--on-tx);border:0;font-weight:700}
 .d.hadir{background:var(--had-bg);border-color:var(--had-bd);color:var(--d-tx)}
 .d.sakit,.d.izin,.d.cuti{background:var(--lv-bg);border-color:var(--lv-bd);color:var(--d-tx)}
 .d.alpa{background:var(--alp-bg);border-color:var(--alp-bd);color:var(--d-tx)}
+.d.pd{background:rgba(245,158,11,.30);border-color:var(--ot);color:var(--d-tx)}/* sel tanggal gajian (menang atas fill status lain) */
 .d.today{outline:2px solid var(--lv);outline-offset:1px}
 .d.x{visibility:hidden}
 /* teks di dalam cell tidak boleh melebarkan kolom: bungkus/rapikan saja */
@@ -96,6 +97,9 @@ button.p{background:var(--ok);color:var(--on-tx);border:0;font-weight:700}
 .dtbl tbody td:nth-child(9){width:140px;min-width:140px}
 .dtbl th:nth-child(1),.dtbl td:nth-child(1),
 .dtbl th:nth-child(2),.dtbl td:nth-child(2){min-width:72px}
+/* zebra striping baris tabel detail + warna khusus baris tanggal gajian */
+.dtbl tbody tr:nth-child(even) td{background:rgba(148,163,184,.12)}
+.dtbl tbody tr.pay td{background:rgba(245,158,11,.22)}
 .sc{max-height:60vh;overflow:auto;border-radius:8px;background:var(--bg);-webkit-overflow-scrolling:touch}
 /* landscape: modal detail kehadiran melebar memenuhi layar */
 @media (orientation:landscape){
@@ -298,6 +302,7 @@ input[type=text],input[type=date]{width:100%;padding:10px;border-radius:8px;bord
 <label class="chk"><input type="checkbox" id="na"> Tidak masuk</label>
 <div class="chips hid" id="lvr"><button class="chip" data-t="sakit">Sakit</button><button class="chip" data-t="izin">Izin</button><button class="chip" data-t="cuti">Cuti</button><button class="chip" data-t="alpa">Alpa</button></div>
 <div class="t2" id="tblock"><div><label>Jam masuk</label><button class="tb" id="ti"></button></div><div><label>Jam pulang</label><button class="tb" id="to"></button></div></div>
+<label class="chk"><input type="checkbox" id="pday"> 💰 Tanggal gajian</label>
 <div id="inf"></div>
 <div id="ds-nom" class="hid"></div>
 <button class="dl" id="dl">Hapus data</button>
@@ -376,7 +381,7 @@ const sb=createClient(SURL,SKEY);
 const K='gaji-state-v1';
 const DB=()=>{const b={};for(let d=1;d<=6;d++)b[d]=d==5?['11:30','13:00']:['12:00','13:00'];return b};
 const DBo=()=>{const b={};for(let d=1;d<=6;d++)b[d]=d==5?['17:30','18:30']:['17:00','18:00'];return b};
-let S={salary:3500000,hours:8,mult:1.5,hol:[],ot:{},att:{},tm:{},lv:{},paid:{sakit:true,izin:false,cuti:true,alpa:false},dIn:'08:00',dOut:'17:00',brk:DB(),brkOt:DBo(),wdays:[1,2,3,4,5,6],holMap:{}};
+let S={salary:3500000,hours:8,mult:1.5,hol:[],ot:{},att:{},tm:{},lv:{},paid:{sakit:true,izin:false,cuti:true,alpa:false},dIn:'08:00',dOut:'17:00',brk:DB(),brkOt:DBo(),wdays:[1,2,3,4,5,6],holMap:{},paydayMap:{}};
 let syncTimer=null;
 
 function applyState(data){
@@ -387,6 +392,7 @@ function applyState(data){
   for(let d=1;d<=6;d++)if(!S.brkOt[d]||(!S.brkOt[d][0]&&!S.brkOt[d][1]))S.brkOt[d]=DBo()[d];
   if(!S.wdays)S.wdays=[1,2,3,4,5,6];
   if(!S.holMap)S.holMap={};
+  if(!S.paydayMap)S.paydayMap={};if(S.paydays)delete S.paydays;
   /* manajemen keuangan pribadi */
   if(!Array.isArray(S.fin))S.fin=[];
   if(!S.finC)S.finC={};
@@ -496,7 +502,7 @@ function render(){
     else if(off){const holName=S.holMap&&S.holMap[k];mid=`<div class="hol">${holName||'libur'}</div>`;cls='off';}
     /* lembur selalu baris terpisah (digabung "8,5jam+2,5jam" membuat cell melebar) */
     const otEl=o?`<i class="ot" style="font-size:9px">+${+o.toFixed(1)}jam</i>`:'';
-    h+=`<button class="d ${cls} ${tod?'today':''}" data-d="${d}"><span>${d}${S.att[k]?'<i>✓</i>':''}</span>${mid}${otEl}</button>`;
+    h+=`<button class="d ${cls} ${tod?'today':''} ${S.paydayMap&&S.paydayMap[k]?'pd':''}" data-d="${d}"><span>${d}${S.att[k]?'<i>✓</i>':''}</span>${mid}${otEl}</button>`;
   }
   $('cal').innerHTML=h;
 }
@@ -600,13 +606,14 @@ $('cal').onclick=e=>{const b=e.target.closest('.d[data-d]');if(!b)return;
   sel=key(cur.getFullYear(),cur.getMonth(),+b.dataset.d);
   const[yy,mm,dd]=sel.split('-').map(Number),lv=S.lv[sel];
   $('dt').textContent=new Date(sel+'T00:00').toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long'});
-  $('ha').checked=!!S.att[sel];lvSel=lv||null;$('na').checked=!!lv;
+  $('ha').checked=!!S.att[sel];lvSel=lv||null;$('na').checked=!!lv;$('pday').checked=!!S.paydayMap[sel];
   const tm=S.tm[sel]||['','']; // tidak default-isi jam pulang → input bertahap (masuk pagi, pulang sore)
   setT('ti',tm[0]);setT('to',tm[1]);onT();
   showLv();$('dl').textContent='Hapus data';dlc=false;$('ds').showModal()};
 $('ha').onchange=()=>{if($('ha').checked){$('na').checked=false;lvSel=null;showLv();if(!T.ti)setT('ti',S.dIn);onT()}
   else{setT('ti','');setT('to','');$('inf').textContent='';$('ds-nom').classList.add('hid')}};
 $('na').onchange=()=>{if($('na').checked){$('ha').checked=false;setT('ti','');setT('to','');}else{lvSel=null;}showLv();onT()};
+$('pday').onchange=()=>{if($('pday').checked)S.paydayMap[sel]=1;else delete S.paydayMap[sel];save();render()};
 document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{lvSel=c.dataset.t;showLv();onT()});
 $('dc').onclick=()=>$('ds').close();
 $('dsv').onclick=()=>{
@@ -639,8 +646,10 @@ $('det').onclick=()=>{
   const DN2=['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
   const expRows=[];
   let rows='',totalKerja=0,totalLembur=0,totalNominal=0,runTotal=0,totalGaji=0,totalOt=0;
+  /* tanggal H-1 (sehari sebelum tiap gajian) → penanda baris puncak periode di tabel */
+  const markSet=new Set(Object.keys(S.paydayMap||{}).map(pk=>{const[py,pm,pdd]=pk.split('-').map(Number);const p=new Date(py,pm-1,pdd-1);return key(p.getFullYear(),p.getMonth(),p.getDate());}));
   for(let d=1;d<=c.n;d++){
-    const k=key(y,m,d),off=isOff(y,m,d),dt=new Date(y,m,d);
+    const k=key(y,m,d),off=isOff(y,m,d),dt=new Date(y,m,d),isPay=!!S.paydayMap[k],isMark=markSet.has(k);
     const hari=DN2[dt.getDay()];
     const tm=S.tm[k];
     let masuk='-',pulang='-',nominal=0,otPay=0,status='',styCls='';
@@ -662,10 +671,11 @@ $('det').onclick=()=>{
     const kNet=H?H.net:0,jamLembur=H?H.lem:0;
     // gaji hari ini = jam efektif × tarif jam (keterlambatan tidak dibayar penuh) + lembur
     if(S.att[k])nominal=(H?Math.min(kNet,S.hours):S.hours)*c.perHour+otPay;
+    if(isPay)runTotal=0; // total kumulatif di-reset tepat di tanggal gajian (awal periode baru)
     totalKerja+=kNet;totalLembur+=jamLembur;totalNominal+=nominal;runTotal+=nominal;
     totalGaji+=nominal-otPay;totalOt+=otPay;
-    rows+=`<tr>
-      <td>${String(d).padStart(2,'0')} ${hari}</td>
+    rows+=`<tr${isMark?' class="pay"':''}>
+      <td${isMark?' style="font-weight:700"':''}>${String(d).padStart(2,'0')} ${hari}</td>
       <td style="${styCls}">${status}</td>
       <td class="ct">${masuk}</td>
       <td class="ct">${pulang}</td>
