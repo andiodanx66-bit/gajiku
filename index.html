@@ -100,10 +100,14 @@ button.p{background:var(--ok);color:var(--on-tx);border:0;font-weight:700}
 /* landscape: modal detail kehadiran melebar memenuhi layar */
 @media (orientation:landscape){
 #dtl{width:min(96vw,1100px);padding:12px 16px}
-#dtl .sc{max-height:calc(90vh - 190px)}
+#dtl .sc{max-height:calc(90vh - 170px)}
 #dtl .row{justify-content:flex-end}
 #dtl .row button{flex:0 1 170px}
 .dtbl{font-size:13px}
+/* ringkasan info di bawah tabel dibuat serapi mungkin (satu baris, font kecil) */
+#dtl-sum{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 14px;margin-top:6px!important;padding-top:6px!important}
+#dtl-sum>div:first-child{flex:1 1 auto;justify-content:flex-start!important;gap:4px 14px!important;font-size:11px!important}
+#dtl-sum>div:last-child{flex:0 0 auto;margin-top:0!important;font-size:11px!important;white-space:nowrap}
 }
 dialog{background:var(--card);color:var(--tx);border:0;border-radius:14px;padding:16px;width:min(92vw,380px);margin:auto;max-height:90vh;overflow-y:auto}
 dialog::backdrop{background:var(--bd)}
