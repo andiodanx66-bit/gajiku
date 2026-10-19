@@ -135,6 +135,13 @@ input[type=number],input[type=email],input[type=password]{width:100%;padding:10p
 .tgl{width:40px;height:40px;padding:0;font-size:18px;line-height:1;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
 #tgl-auth{position:fixed;top:max(12px,env(safe-area-inset-top));right:12px;z-index:50}
 [data-theme="light"] .tgl{box-shadow:0 2px 8px #0002}
+/* tombol rotasi layar (landscape) */
+#rot svg{display:block;transition:transform .25s}
+#rot.on svg{transform:rotate(90deg)}
+#rot.on{background:var(--ok);color:var(--on-tx);border-color:transparent}
+/* fallback rotasi CSS ke landscape untuk browser yang tak mendukung kunci orientasi */
+html.rot-ls,html.rot-ls body{background:var(--bg)}
+html.rot-ls body{position:fixed;top:0;left:0;width:100vh;height:100vw;max-width:none;margin:0;transform:translateX(100vw) rotate(90deg);transform-origin:0 0;overflow-y:auto}
 /* dropdown akun (klik username) */
 #udm{position:absolute;top:100%;left:0;min-width:190px;margin-top:6px;background:var(--card);border:1px solid var(--ln);border-radius:10px;box-shadow:0 8px 24px #0003;overflow:hidden;z-index:60}
 #udm em{display:block;font-style:normal;padding:10px 12px;font-size:12px;color:var(--mu);border-bottom:1px solid var(--ln);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -216,7 +223,7 @@ input[type=text],input[type=date]{width:100%;padding:10px;border-radius:8px;bord
 
 <!-- APP -->
 <div id="app" class="hid">
-<div class="top"><div style="position:relative"><h1 id="hd" title="Menu akun" style="cursor:pointer">💰 Gajiku</h1><div id="udm" class="hid"><em id="udm-em"></em><button id="udm-out">↩ Keluar</button></div></div><div style="display:flex;gap:8px"><button class="tgl" id="rot" title="Putar layar" aria-label="Putar layar">⟳</button><button class="tgl" id="tgl-app" title="Ganti tema" aria-label="Ganti tema">🌙</button><button id="ahl" title="Atur hari libur bulan ini" style="padding:8px 10px">🗓️</button><button id="set" title="Pengaturan" aria-label="Pengaturan">⚙️</button></div></div>
+<div class="top"><div style="position:relative"><h1 id="hd" title="Menu akun" style="cursor:pointer">💰 Gajiku</h1><div id="udm" class="hid"><em id="udm-em"></em><button id="udm-out">↩ Keluar</button></div></div><div style="display:flex;gap:8px"><button class="tgl" id="rot" title="Putar layar ke landscape" aria-label="Putar layar ke landscape" aria-pressed="false"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3.5" width="6" height="17" rx="1.8"/><path d="M6.2 8.4a7 7 0 0 0 0 7.2"/><path d="M4.4 13.6l1.8 2 1.8-2"/><path d="M17.8 15.6a7 7 0 0 0 0-7.2"/><path d="M16 10.4l1.8-2 1.8 2"/></g></svg></button><button class="tgl" id="tgl-app" title="Ganti tema" aria-label="Ganti tema">🌙</button><button id="ahl" title="Atur hari libur bulan ini" style="padding:8px 10px">🗓️</button><button id="set" title="Pengaturan" aria-label="Pengaturan">⚙️</button></div></div>
 <section id="pg-gaji">
 <div class="nav"><button id="prev">‹</button><b id="ttl"></b><button id="next">›</button></div>
 <div class="grid" id="sum"></div>
@@ -783,16 +790,40 @@ $('ahl').onclick=()=>{
   $('hl-ttl').textContent='🗓️ Hari Libur Nasional – '+cur.toLocaleDateString('id-ID',{month:'long',year:'numeric'});
   renderHolList();$('hl').showModal();
 };
+/* ── rotasi layar ke landscape ── */
+let rotOn=false,rotCSS=false,nativeRot=false;
+function setRotUI(on){
+  rotOn=on;
+  const b=$('rot');
+  b.classList.toggle('on',on);
+  const t=on?'Kembali ke potret':'Putar layar ke landscape';
+  b.title=t;b.setAttribute('aria-label',t);b.setAttribute('aria-pressed',on?'true':'false');
+}
 $('rot').onclick=async()=>{
-  try{
-    if(!document.fullscreenElement) await document.documentElement.requestFullscreen?.();
-    if(screen.orientation && screen.orientation.lock){
-      const curType=screen.orientation.type||'';
-      if(curType.includes('landscape')){ screen.orientation.unlock?.(); }
-      else { await screen.orientation.lock('landscape'); }
-    } else { alert('Browser tidak mendukung kunci orientasi'); }
-  }catch(e){ alert('Tidak bisa memutar: '+ (e&&e.message?e.message:e)); }
+  if(rotOn){ /* kembali ke potret */
+    if(rotCSS){document.documentElement.classList.remove('rot-ls');rotCSS=false;}
+    try{ if(screen.orientation&&screen.orientation.unlock) screen.orientation.unlock(); }catch(_){}
+    if(document.fullscreenElement){ try{ await document.exitFullscreen(); }catch(_){} }
+    nativeRot=false;setRotUI(false);return;
+  }
+  /* putar ke landscape: coba cara native (butuh fullscreen; hanya didukung browser mobile) */
+  if(!document.fullscreenElement&&document.documentElement.requestFullscreen){
+    try{ await document.documentElement.requestFullscreen(); }catch(_){}
+  }
+  if(screen.orientation&&screen.orientation.lock){
+    try{ await screen.orientation.lock('landscape');nativeRot=true;setRotUI(true);return; }catch(_){}
+  }
+  /* fallback: bila jendela sudah landscape (mis. desktop) cukup tandai aktif,
+     kalau belum, putar tampilan pakai CSS */
+  if(!(window.matchMedia&&matchMedia('(orientation:landscape)').matches)){
+    document.documentElement.classList.add('rot-ls');rotCSS=true;
+  }
+  setRotUI(true);
 };
+/* reset state bila user keluar fullscreen sendiri (mis. tombol Esc) */
+document.addEventListener('fullscreenchange',()=>{
+  if(!document.fullscreenElement&&nativeRot){nativeRot=false;setRotUI(false);}
+});
 $('hl-add').onclick=()=>{
   const d=$('hl-dt').value,n=$('hl-nm').value.trim();
   if(!d){$('hl-nm').placeholder='Pilih tanggal dulu';return;}
