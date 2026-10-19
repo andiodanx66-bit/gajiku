@@ -216,7 +216,7 @@ input[type=text],input[type=date]{width:100%;padding:10px;border-radius:8px;bord
 
 <!-- APP -->
 <div id="app" class="hid">
-<div class="top"><div style="position:relative"><h1 id="hd" title="Menu akun" style="cursor:pointer">💰 Gajiku</h1><div id="udm" class="hid"><em id="udm-em"></em><button id="udm-out">↩ Keluar</button></div></div><div style="display:flex;gap:8px"><button class="tgl" id="tgl-app" title="Ganti tema" aria-label="Ganti tema">🌙</button><button id="ahl" title="Atur hari libur bulan ini" style="padding:8px 10px">🗓️</button><button id="set" title="Pengaturan" aria-label="Pengaturan">⚙️</button></div></div>
+<div class="top"><div style="position:relative"><h1 id="hd" title="Menu akun" style="cursor:pointer">💰 Gajiku</h1><div id="udm" class="hid"><em id="udm-em"></em><button id="udm-out">↩ Keluar</button></div></div><div style="display:flex;gap:8px"><button class="tgl" id="rot" title="Putar layar" aria-label="Putar layar">↻</button><button class="tgl" id="tgl-app" title="Ganti tema" aria-label="Ganti tema">🌙</button><button id="ahl" title="Atur hari libur bulan ini" style="padding:8px 10px">🗓️</button><button id="set" title="Pengaturan" aria-label="Pengaturan">⚙️</button></div></div>
 <section id="pg-gaji">
 <div class="nav"><button id="prev">‹</button><b id="ttl"></b><button id="next">›</button></div>
 <div class="grid" id="sum"></div>
@@ -779,6 +779,20 @@ function renderHolList(){
   });
 }
 $('ahl').onclick=()=>{
+  const y=cur.getFullYear(),m=cur.getMonth();
+  $('hl-ttl').textContent='🗓️ Hari Libur Nasional – '+cur.toLocaleDateString('id-ID',{month:'long',year:'numeric'});
+  renderHolList();$('hl').showModal();
+};
+$('rot').onclick=async()=>{
+  try{
+    if(!document.fullscreenElement) await document.documentElement.requestFullscreen?.();
+    if(screen.orientation && screen.orientation.lock){
+      const curType=screen.orientation.type||'';
+      if(curType.includes('landscape')){ screen.orientation.unlock?.(); }
+      else { await screen.orientation.lock('landscape'); }
+    } else { alert('Browser tidak mendukung kunci orientasi'); }
+  }catch(e){ alert('Tidak bisa memutar: '+ (e&&e.message?e.message:e)); }
+};
   hlEditKey=null;
   const y=cur.getFullYear(),m=String(cur.getMonth()+1).padStart(2,'0');
   $('hl-dt').value=`${y}-${m}-01`;
