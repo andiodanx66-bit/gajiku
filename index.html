@@ -99,8 +99,8 @@ button.p{background:var(--ok);color:var(--on-tx);border:0;font-weight:700}
 .sc{max-height:60vh;overflow:auto;border-radius:8px;background:var(--bg);-webkit-overflow-scrolling:touch}
 /* landscape: modal detail kehadiran melebar memenuhi layar */
 @media (orientation:landscape){
-#dtl{width:min(96vw,1100px);padding:12px 16px;max-height:92vh;overflow-y:auto;display:flex;flex-direction:column}
-#dtl .sc{flex:1;min-height:0;max-height:none}
+#dtl{width:min(96vw,1100px);padding:12px 16px}
+#dtl .sc{max-height:calc(90vh - 190px)}
 #dtl .row{justify-content:flex-end}
 #dtl .row button{flex:0 1 170px}
 .dtbl{font-size:13px}
