@@ -79,40 +79,44 @@ button.p{background:var(--ok);color:var(--on-tx);border:0;font-weight:700}
 .lgd{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:10px;justify-content:center}
 .lgd span{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--mu)}
 .lgd i{display:inline-block;width:10px;height:10px;border-radius:3px;flex-shrink:0}
-/* modal detail tabel */
-#dtl{width:min(96vw,520px)}
-.dtbl{width:100%;min-width:740px;border-collapse:collapse;font-size:12px;margin-top:12px}
-.dtbl th{background:var(--bg);color:var(--mu);padding:6px 4px;text-align:left;position:sticky;top:0;font-weight:600;white-space:nowrap;line-height:14px;box-shadow:inset 0 0 0 1px var(--ln)}/* garis grid di tiap sel header */
-/* header 2 baris: baris kedua menempel tepat di bawah baris pertama saat scroll */
+/* modal detail tabel — font, padding & lebar kolom dikecilkan supaya tabel lebih lega */
+#dtl{width:min(96vw,520px);font-size:13px}
+#dtl .row{margin-top:10px}
+#dtl .row button{font-size:12px;padding:7px 10px}
+.dtbl{width:100%;min-width:660px;border-collapse:collapse;font-size:11px;margin-top:8px}
+.dtbl th{background:var(--bg);color:var(--mu);padding:4px 3px;text-align:left;position:sticky;top:0;font-weight:600;white-space:nowrap;line-height:13px;box-shadow:inset 0 0 0 1px var(--ln)}/* garis grid di tiap sel header */
+/* header 2 baris: baris kedua menempel tepat di bawah baris pertama saat scroll (13 + 4+4 = 21) */
 .dtbl thead tr:first-child th{top:0}
-.dtbl thead tr:last-child th{top:26px}
+.dtbl thead tr:last-child th{top:21px}
 /* semua label header rata tengah */
 .dtbl thead th,.dtbl thead th.rp{text-align:center}
-.dtbl td{padding:6px 4px;border-bottom:1px solid var(--ln);border-left:1px solid var(--ln);border-right:1px solid var(--ln);vertical-align:middle}/* grid tipis kiri-kanan antar kolom */
+.dtbl td{padding:4px 3px;border-bottom:1px solid var(--ln);border-left:1px solid var(--ln);border-right:1px solid var(--ln);vertical-align:middle}/* grid tipis kiri-kanan antar kolom */
 .dtbl tr:last-child td{border-bottom:none}
 .dtbl .rp{text-align:right;white-space:nowrap}
 .dtbl .ct{text-align:center;white-space:nowrap}
-/* kolom gaji, lembur & total dilebarkan supaya angka muat satu baris */
-.dtbl tbody td:nth-child(7),.dtbl tbody td:nth-child(8){width:110px;min-width:110px}
-.dtbl tbody td:nth-child(9){width:140px;min-width:140px}
+/* kolom gaji, lembur & total dilebarkan supaya angka muat satu baris (dikecilkan ikut font) */
+.dtbl tbody td:nth-child(7),.dtbl tbody td:nth-child(8){width:94px;min-width:94px}
+.dtbl tbody td:nth-child(9){width:120px;min-width:120px}
 .dtbl th:nth-child(1),.dtbl td:nth-child(1),
-.dtbl th:nth-child(2),.dtbl td:nth-child(2){min-width:72px}
+.dtbl th:nth-child(2),.dtbl td:nth-child(2){min-width:62px}
 /* zebra striping baris tabel detail + warna khusus baris tanggal gajian */
 .dtbl tbody tr:nth-child(even) td{background:rgba(148,163,184,.12)}
 .dtbl tbody tr.pay td{background:rgba(245,158,11,.22)}
-.sc{max-height:60vh;overflow:auto;border-radius:8px;background:var(--bg);-webkit-overflow-scrolling:touch}
+.sc{max-height:60vh;overflow:auto;border-radius:8px;background:var(--bg);-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+/* modal detail: cegah browser memicu swipe-back/navigasi sisi & seleksi teks saat geser bulan */
+#dtl{overscroll-behavior:contain;-webkit-user-select:none;user-select:none}
 /* landscape: modal detail kehadiran melebar memenuhi layar */
 @media (orientation:landscape){
 #dtl{width:min(96vw,1100px);padding:12px 16px}
 #dtl .sc{max-height:calc(90vh - 170px)}
 #dtl .row{justify-content:flex-end}
 #dtl .row button{flex:0 1 170px}
-.dtbl{font-size:13px}
+.dtbl{font-size:12px}
 /* ringkasan info di bawah tabel dibuat serapi mungkin (satu baris, font kecil) */
 #dtl-sum{margin-top:6px!important;padding-top:6px!important}
 #dtl-sum:not(.per){display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 14px}
-#dtl-sum:not(.per)>div:first-child{flex:1 1 auto;justify-content:flex-start!important;gap:4px 14px!important;font-size:11px!important}
-#dtl-sum:not(.per)>div:last-child{flex:0 0 auto;margin-top:0!important;font-size:11px!important;white-space:nowrap}
+#dtl-sum:not(.per)>div:first-child{flex:1 1 auto;justify-content:flex-start!important;gap:4px 14px!important;font-size:10px!important}
+#dtl-sum:not(.per)>div:last-child{flex:0 0 auto;margin-top:0!important;font-size:10px!important;white-space:nowrap}
 }
 dialog{background:var(--card);color:var(--tx);border:0;border-radius:14px;padding:16px;width:min(92vw,380px);margin:auto;max-height:90vh;overflow-y:auto}
 dialog::backdrop{background:var(--bd)}
@@ -335,13 +339,18 @@ input[type=text],input[type=date]{width:100%;padding:10px;border-radius:8px;bord
 <div id="brlo"></div>
 <div class="row"><button id="brc">Batal</button><button class="p" id="brs">Simpan</button></div></dialog>
 
-<dialog id="dtl"><b id="dtl-ttl"></b>
-<div id="dtl-info" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--mu)"></div>
+<dialog id="dtl">
+<div style="display:flex;align-items:center;gap:6px">
+<button id="dtl-p" title="Bulan sebelumnya" aria-label="Bulan sebelumnya" style="padding:2px 10px;font-size:15px;line-height:1.5">‹</button>
+<b id="dtl-ttl" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></b>
+<button id="dtl-n" title="Bulan berikutnya" aria-label="Bulan berikutnya" style="padding:2px 10px;font-size:15px;line-height:1.5">›</button>
+</div>
+<div id="dtl-info" style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px 10px;font-size:11px;color:var(--mu)"></div>
 <div class="sc"><table class="dtbl"><thead>
 <tr><th rowspan="2">Tgl</th><th rowspan="2">Status</th><th rowspan="2">Masuk</th><th rowspan="2">Pulang</th><th class="ct" colspan="2">Jam kerja</th><th class="ct" colspan="2">Nominal</th><th rowspan="2" class="rp">Total</th></tr>
 <tr><th class="ct">Non-lembur</th><th class="ct">Lembur</th><th class="rp">Non-lembur</th><th class="rp">Lembur</th></tr>
 </thead><tbody id="dtl-body"></tbody></table></div>
-<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--ln)" id="dtl-sum"></div>
+<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--ln)" id="dtl-sum"></div>
 <div class="row"><button id="dtl-x">📥 Excel</button><button id="dtl-c">Tutup</button></div></dialog>
 
 <dialog id="hl" tabindex="-1"><b id="hl-ttl">🗓️ Hari Libur Nasional</b>
@@ -456,8 +465,8 @@ const key=(y,m,d)=>`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'
 let cur=new Date();cur.setDate(1);
 const isOff=(y,m,d)=>!S.wdays.includes(new Date(y,m,d).getDay())||!!S.holMap[key(y,m,d)];
 
-function calc(){
-  const y=cur.getFullYear(),m=cur.getMonth(),n=new Date(y,m+1,0).getDate();
+function calc(dt=cur){ // dt = bulan yg dihitung (default: bulan tampilan; modal detail pakai bulan hasil geser)
+  const y=dt.getFullYear(),m=dt.getMonth(),n=new Date(y,m+1,0).getDate();
   let wd=0,hd=0,pl=0,oh=0;const lc={sakit:0,izin:0,cuti:0,alpa:0};
   for(let d=1;d<=n;d++){const k=key(y,m,d);oh+=+S.ot[k]||0;
     if(isOff(y,m,d)){if(S.att[k])hd++;continue;}wd++;
@@ -638,10 +647,11 @@ $('dl').onclick=()=>{
 
 /* modal detail */
 let xAoa=null,xFile='',xPerSum=false,xTblEnd=0; // data untuk export excel
-$('det').onclick=()=>{
-  const c=calc();
+let dCur=null; // bulan yg sedang dibuka di modal detail (untuk geser kiri/kanan)
+function openDetail(){
+  const dt=dCur,c=calc(dt);
   const y=c.y,m=c.m;
-  const title='Detail Kehadiran – '+cur.toLocaleDateString('id-ID',{month:'long',year:'numeric'});
+  const title='Detail Kehadiran – '+dt.toLocaleDateString('id-ID',{month:'long',year:'numeric'});
   $('dtl-ttl').textContent=title;
   $('dtl-info').innerHTML=`<span>Gaji pokok <b style="color:var(--tx)">${rp(S.salary)}</b></span><span>Per jam <b style="color:var(--tx)">${rp(c.perHour)}</b></span><span>Total hari kerja <b style="color:var(--tx)">${c.wd} hari</b></span>`;
   const DN2=['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
@@ -759,35 +769,69 @@ $('det').onclick=()=>{
   ];
   xFile=`detail-kehadiran-${y}-${String(m+1).padStart(2,'0')}.xlsx`;
   /* kartu ringkasan di bawah tabel — dipecah per gajian bila ada >1 periode di bulan ini */
-  const blk=(lb,k,l,g,o)=>`<div style="flex:1 1 230px;min-width:210px;border:1px solid var(--ln);border-radius:8px;padding:8px 10px;background:var(--bg);">
-    <div style="font-weight:700;color:var(--tx);font-size:12px;margin-bottom:4px">${lb}</div>
+  const blk=(lb,k,l,g,o)=>`<div style="flex:1 1 230px;min-width:210px;border:1px solid var(--ln);border-radius:8px;padding:7px 9px;background:var(--bg);font-size:11px;">
+    <div style="font-weight:700;color:var(--tx);margin-bottom:3px">${lb}</div>
     <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:2px 12px">
       <span style="color:var(--mu)">Non-lembur <b style="color:var(--tx)">${+k.toFixed(1)} jam</b></span>
       <span style="color:var(--mu)">Lembur <b style="color:var(--ot)">${+l.toFixed(1)} jam</b></span>
       <span style="color:var(--mu)">Non-lembur <b style="color:var(--tx)">${rp(g)}</b></span>
       <span style="color:var(--mu)">Lembur <b style="color:var(--ot)">${rp(o)}</b></span>
     </div>
-    <div style="margin-top:4px;font-size:12px;color:var(--mu)">Total <b style="color:var(--ok)">${rp(g+o)}</b></div>
+    <div style="margin-top:3px;color:var(--mu)">Total <b style="color:var(--ok)">${rp(g+o)}</b></div>
   </div>`;
   if(perSum){
     $('dtl-sum').className='per';
-    $('dtl-sum').innerHTML=`<div style="font-size:12px;font-weight:700;color:var(--mu);margin-bottom:6px">Ringkasan per gajian</div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px">
+    $('dtl-sum').innerHTML=`<div style="font-size:11px;font-weight:700;color:var(--mu);margin-bottom:5px">Ringkasan per gajian</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
       ${periods.map(p=>blk('💰 '+p.label,p.kerja,p.lembur,p.gaji,p.ot)).join('')}
     </div>`;
   }else{
     $('dtl-sum').className='';
-    $('dtl-sum').innerHTML=`<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:13px">
+    $('dtl-sum').innerHTML=`<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:5px;font-size:11px">
       <span style="color:var(--mu)">Non-lembur <b style="color:var(--tx)">${+totalKerja.toFixed(1)} jam</b></span>
       <span style="color:var(--mu)">Lembur <b style="color:var(--ot)">${+totalLembur.toFixed(1)} jam</b></span>
       <span style="color:var(--mu)">Non-lembur <b style="color:var(--tx)">${rp(totalGaji)}</b></span>
       <span style="color:var(--mu)">Lembur <b style="color:var(--ot)">${rp(totalOt)}</b></span>
     </div>
-    <div style="margin-top:4px;font-size:13px;color:var(--mu)">Gaji sementara <b style="color:var(--ok)">${rp(totalGaji+totalOt)}</b></div>`;
+    <div style="margin-top:3px;font-size:11px;color:var(--mu)">Gaji sementara <b style="color:var(--ok)">${rp(totalGaji+totalOt)}</b></div>`;
   }
-  $('dtl').showModal();
-};
-$('dtl-c').onclick=()=>$('dtl').close();
+}
+/* pindah bulan: tombol ‹ › dan geser kiri/kanan (sentuh & mouse) */
+function shiftDetail(step){
+  if(!dCur||!$('dtl').open)return;
+  dCur=new Date(dCur.getFullYear(),dCur.getMonth()+step,1);
+  openDetail();
+  const sc=$('dtl').querySelector('.sc');if(sc)sc.scrollTop=0; // kembali ke baris pertama
+}
+$('det').onclick=()=>{dCur=new Date(cur.getFullYear(),cur.getMonth(),1);openDetail();$('dtl').showModal();};
+$('dtl-c').onclick=()=>{$('dtl').close();dCur=null;};
+$('dtl-p').onclick=()=>shiftDetail(-1);
+$('dtl-n').onclick=()=>shiftDetail(1);
+/* deteksi geser: abaikan bila mulai dari tombol, atau dari dalam tabel yg sedang bisa digeser
+   horizontal (supaya kolom terakhir tetap bisa dijangkau dengan scroll tabel) */
+let gX=null,gY=null;
+$('dtl').addEventListener('pointerdown',e=>{
+  if(e.target&&e.target.closest&&e.target.closest('button')){gX=null;return;}
+  const sc=e.target&&e.target.closest?e.target.closest('.sc'):null;
+  if(sc&&sc.scrollWidth>sc.clientWidth+2){gX=null;return;}
+  gX=e.clientX;gY=e.clientY;
+});
+$('dtl').addEventListener('pointerup',e=>{
+  if(gX===null)return;
+  const dx=e.clientX-gX,dy=e.clientY-gY;gX=null;
+  if(Math.abs(dx)>=60&&Math.abs(dx)>Math.abs(dy)*1.5)shiftDetail(dx<0?1:-1); // geser kiri = bulan berikutnya
+});
+$('dtl').addEventListener('pointercancel',()=>{gX=null;});
+/* cegah navigasi back/side-swipe browser (Android/iOS) saat geser horizontal di dalam modal:
+   preventDefault pada touchmove horizontal yg dimulai di area tabel/ringkasan (bukan di dalam .sc
+   yg sedang bisa digeser horizontal, supaya scroll tabel tetap normal) */
+$('dtl').addEventListener('touchmove',e=>{
+  if(!e.touches||e.touches.length!==1)return;
+  const t=e.touches[0];
+  if(gX===null)return; // gestur yg diabaikan (tombol / tabel lebar) → biarkan browser
+  const dx=t.clientX-gX,dy=t.clientY-gY;
+  if(Math.abs(dx)>8&&Math.abs(dx)>Math.abs(dy)*1.2&&e.cancelable)e.preventDefault();
+},{passive:false});
 $('dtl-x').onclick=async()=>{
   if(!xAoa)return;
   const b=$('dtl-x');b.disabled=true;b.textContent='Memproses...';
