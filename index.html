@@ -109,9 +109,10 @@ button.p{background:var(--ok);color:var(--on-tx);border:0;font-weight:700}
 #dtl .row button{flex:0 1 170px}
 .dtbl{font-size:13px}
 /* ringkasan info di bawah tabel dibuat serapi mungkin (satu baris, font kecil) */
-#dtl-sum{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 14px;margin-top:6px!important;padding-top:6px!important}
-#dtl-sum>div:first-child{flex:1 1 auto;justify-content:flex-start!important;gap:4px 14px!important;font-size:11px!important}
-#dtl-sum>div:last-child{flex:0 0 auto;margin-top:0!important;font-size:11px!important;white-space:nowrap}
+#dtl-sum{margin-top:6px!important;padding-top:6px!important}
+#dtl-sum:not(.per){display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 14px}
+#dtl-sum:not(.per)>div:first-child{flex:1 1 auto;justify-content:flex-start!important;gap:4px 14px!important;font-size:11px!important}
+#dtl-sum:not(.per)>div:last-child{flex:0 0 auto;margin-top:0!important;font-size:11px!important;white-space:nowrap}
 }
 dialog{background:var(--card);color:var(--tx);border:0;border-radius:14px;padding:16px;width:min(92vw,380px);margin:auto;max-height:90vh;overflow-y:auto}
 dialog::backdrop{background:var(--bd)}
@@ -636,7 +637,7 @@ $('dl').onclick=()=>{
   [S.att,S.tm,S.ot,S.lv].forEach(o=>delete o[sel]);save();$('ds').close();render()};
 
 /* modal detail */
-let xAoa=null,xFile=''; // data untuk export excel
+let xAoa=null,xFile='',xPerSum=false,xTblEnd=0; // data untuk export excel
 $('det').onclick=()=>{
   const c=calc();
   const y=c.y,m=c.m;
@@ -691,6 +692,51 @@ $('det').onclick=()=>{
       nominal&&S.att[k]?Math.round(runTotal):'']);
   }
   $('dtl-body').innerHTML=rows;
+  /* ── Ringkasan per gajian (lintas bulan) ──
+     periode = [tgl gajian .. sehari sebelum gajian berikutnya]; KARTU ditampilkan di bulan tempat
+     periode BERAKHIR — sisa akhir bulan (mis. tgl 31) ikut dihitung ke bulan depan.
+     Contoh: gajian 31 Jan & 15 Feb → kartu "31 Jan–14 Feb" muncul di bulan Februari. */
+  const dayStat=(yy,mm,dd)=>{
+    const kk=key(yy,mm,dd),HH=S.att[kk]?dayHrs(yy,mm,dd):null;
+    const kerja=HH?HH.net:0,lembur=HH?HH.lem:0;
+    let otPay=0,gaji=0;
+    if(S.att[kk]){otPay=(+S.ot[kk]||0)*c.otHour;gaji=(HH?Math.min(kerja,S.hours):S.hours)*c.perHour;}
+    else if(S.lv[kk]&&S.paid[S.lv[kk]])gaji=c.perDay;
+    return{kerja,lembur,gaji,ot:otPay};
+  };
+  const sumRange=(a,b)=>{
+    const r={kerja:0,lembur:0,gaji:0,ot:0};
+    for(let t=new Date(a.getFullYear(),a.getMonth(),a.getDate());t<=b;t.setDate(t.getDate()+1)){
+      const s=dayStat(t.getFullYear(),t.getMonth(),t.getDate());
+      r.kerja+=s.kerja;r.lembur+=s.lembur;r.gaji+=s.gaji;r.ot+=s.ot;
+    }
+    return r;
+  };
+  const pays=Object.keys(S.paydayMap||{}).map(pk=>{const q=pk.split('-').map(Number);return new Date(q[0],q[1]-1,q[2]);}).sort((a,b)=>a-b);
+  const mFirst=new Date(y,m,1),mLast=new Date(y,m,c.n);
+  const periods=[];
+  for(let i=0;i<pays.length;i++){
+    const st=pays[i],nx=pays[i+1];
+    if(nx){ // periode tertutup: berakhir sehari sebelum gajian berikutnya
+      const en=new Date(nx.getFullYear(),nx.getMonth(),nx.getDate()-1);
+      if(en>=mFirst&&en<=mLast)periods.push({st,en});
+    }else if(st<=mLast){ // gajian terakhir → periode berjalan, ditutup di akhir bulan tampilan
+      periods.push({st,en:new Date(mLast)});
+    }
+  }
+  const pad2=n=>String(n).padStart(2,'0');
+  const mS=d=>d.toLocaleDateString('id-ID',{month:'short'});
+  periods.forEach(p=>{
+    const same=p.st.getFullYear()===p.en.getFullYear()&&p.st.getMonth()===p.en.getMonth();
+    p.label=same?`${pad2(p.st.getDate())}–${pad2(p.en.getDate())} ${mS(p.en)}`
+                :`${pad2(p.st.getDate())} ${mS(p.st)}–${pad2(p.en.getDate())} ${mS(p.en)}`;
+    const s=sumRange(p.st,p.en);
+    p.kerja=s.kerja;p.lembur=s.lembur;p.gaji=s.gaji;p.ot=s.ot;
+  });
+  const sK=periods.reduce((s,p)=>s+p.kerja,0),sL=periods.reduce((s,p)=>s+p.lembur,0),
+        sG=periods.reduce((s,p)=>s+p.gaji,0),sO=periods.reduce((s,p)=>s+p.ot,0);
+  const perSum=periods.length>0; // ada periode yg berakhir di bulan ini → ringkasan dipecah per gajian
+  xTblEnd=4+expRows.length;xPerSum=perSum;
   xAoa=[
     [title],
     ['Gaji pokok',Math.round(S.salary),'Per jam',Math.round(c.perHour),'Total hari kerja',c.wd],
@@ -698,20 +744,47 @@ $('det').onclick=()=>{
     ['Tgl','Status','Masuk','Pulang','Non-lembur (jam)','Lembur (jam)','Non-lembur (Rp)','Lembur (Rp)','Total (Rp)'],
     ...expRows,
     [],
-    ['Non-lembur (jam)',+totalKerja.toFixed(2)],
-    ['Lembur (jam)',+totalLembur.toFixed(2)],
-    ['Non-lembur (Rp)',Math.round(totalGaji)],
-    ['Lembur (Rp)',Math.round(totalOt)],
-    ['Gaji sementara (Rp)',Math.round(totalGaji+totalOt)]
+    ...(perSum?[
+      ['Ringkasan per gajian'],
+      ['Gajian','','','','Non-lembur (jam)','Lembur (jam)','Non-lembur (Rp)','Lembur (Rp)','Total (Rp)'],
+      ...periods.map(p=>[p.label,'','','',+p.kerja.toFixed(2),+p.lembur.toFixed(2),Math.round(p.gaji),Math.round(p.ot),Math.round(p.gaji+p.ot)]),
+      ['Total','','','',+sK.toFixed(2),+sL.toFixed(2),Math.round(sG),Math.round(sO),Math.round(sG+sO)]
+    ]:[
+      ['Non-lembur (jam)',+totalKerja.toFixed(2)],
+      ['Lembur (jam)',+totalLembur.toFixed(2)],
+      ['Non-lembur (Rp)',Math.round(totalGaji)],
+      ['Lembur (Rp)',Math.round(totalOt)],
+      ['Gaji sementara (Rp)',Math.round(totalGaji+totalOt)]
+    ])
   ];
   xFile=`detail-kehadiran-${y}-${String(m+1).padStart(2,'0')}.xlsx`;
-  $('dtl-sum').innerHTML=`<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:13px">
-    <span style="color:var(--mu)">Non-lembur <b style="color:var(--tx)">${+totalKerja.toFixed(1)} jam</b></span>
-    <span style="color:var(--mu)">Lembur <b style="color:var(--ot)">${+totalLembur.toFixed(1)} jam</b></span>
-    <span style="color:var(--mu)">Non-lembur <b style="color:var(--tx)">${rp(totalGaji)}</b></span>
-    <span style="color:var(--mu)">Lembur <b style="color:var(--ot)">${rp(totalOt)}</b></span>
-  </div>
-  <div style="margin-top:4px;font-size:13px;color:var(--mu)">Gaji sementara <b style="color:var(--ok)">${rp(totalGaji+totalOt)}</b></div>`;
+  /* kartu ringkasan di bawah tabel — dipecah per gajian bila ada >1 periode di bulan ini */
+  const blk=(lb,k,l,g,o)=>`<div style="flex:1 1 230px;min-width:210px;border:1px solid var(--ln);border-radius:8px;padding:8px 10px;background:var(--bg);">
+    <div style="font-weight:700;color:var(--tx);font-size:12px;margin-bottom:4px">${lb}</div>
+    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:2px 12px">
+      <span style="color:var(--mu)">Non-lembur <b style="color:var(--tx)">${+k.toFixed(1)} jam</b></span>
+      <span style="color:var(--mu)">Lembur <b style="color:var(--ot)">${+l.toFixed(1)} jam</b></span>
+      <span style="color:var(--mu)">Non-lembur <b style="color:var(--tx)">${rp(g)}</b></span>
+      <span style="color:var(--mu)">Lembur <b style="color:var(--ot)">${rp(o)}</b></span>
+    </div>
+    <div style="margin-top:4px;font-size:12px;color:var(--mu)">Total <b style="color:var(--ok)">${rp(g+o)}</b></div>
+  </div>`;
+  if(perSum){
+    $('dtl-sum').className='per';
+    $('dtl-sum').innerHTML=`<div style="font-size:12px;font-weight:700;color:var(--mu);margin-bottom:6px">Ringkasan per gajian</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      ${periods.map(p=>blk('💰 '+p.label,p.kerja,p.lembur,p.gaji,p.ot)).join('')}
+    </div>`;
+  }else{
+    $('dtl-sum').className='';
+    $('dtl-sum').innerHTML=`<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:13px">
+      <span style="color:var(--mu)">Non-lembur <b style="color:var(--tx)">${+totalKerja.toFixed(1)} jam</b></span>
+      <span style="color:var(--mu)">Lembur <b style="color:var(--ot)">${+totalLembur.toFixed(1)} jam</b></span>
+      <span style="color:var(--mu)">Non-lembur <b style="color:var(--tx)">${rp(totalGaji)}</b></span>
+      <span style="color:var(--mu)">Lembur <b style="color:var(--ot)">${rp(totalOt)}</b></span>
+    </div>
+    <div style="margin-top:4px;font-size:13px;color:var(--mu)">Gaji sementara <b style="color:var(--ok)">${rp(totalGaji+totalOt)}</b></div>`;
+  }
   $('dtl').showModal();
 };
 $('dtl-c').onclick=()=>$('dtl').close();
@@ -746,20 +819,41 @@ $('dtl-x').onclick=async()=>{
       cell.alignment={horizontal:'center',vertical:'middle'};
       cell.border=bd;
     }
-    // isi tabel: grid + format angka
-    for(let r=5;r<=n-6;r++)for(let c=1;c<=col;c++){
+    // isi tabel: grid + format angka (baris 5 s/d baris terakhir tabel harian)
+    const lastTbl=xTblEnd,sumStart=lastTbl+2; // ringkasan mulai setelah 1 baris kosong
+    for(let r=5;r<=lastTbl;r++)for(let c=1;c<=col;c++){
       const cell=ws.getCell(r,c);
       cell.border=bd;
       if(c===5||c===6)cell.numFmt='0.00';
       else if(c>=7)cell.numFmt='#,##0';
       if(c===1||c===3||c===4)cell.alignment={horizontal:'center'};
     }
-    // ringkasan (5 baris terakhir): grid di 2 kolom pertama
-    for(let r=n-4;r<=n;r++){
-      ws.getCell(r,1).border=bd;ws.getCell(r,1).font={bold:true};
-      ws.getCell(r,2).border=bd;ws.getCell(r,2).numFmt=r<=n-3?'0.00':'#,##0';
+    if(xPerSum){
+      // judul & header blok "Ringkasan per gajian"
+      ws.getCell(sumStart,1).font={bold:true};
+      for(let c=1;c<=col;c++){
+        const cell=ws.getCell(sumStart+1,c);
+        cell.font={bold:true};cell.border=bd;
+        cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF2F2F2'}};
+        cell.alignment={horizontal:'center'};
+      }
+      // baris periode + baris total: grid & format angka (kolom 1 rata tengah, total ditebalkan)
+      for(let r=sumStart+2;r<=n;r++)for(let c=1;c<=col;c++){
+        const cell=ws.getCell(r,c);
+        cell.border=bd;
+        if(c===5||c===6)cell.numFmt='0.00';
+        else if(c>=7)cell.numFmt='#,##0';
+        if(c===1)cell.alignment={horizontal:'center'};
+        if(r===n)cell.font={bold:true};
+      }
+    }else{
+      // ringkasan (5 baris terakhir): grid di 2 kolom pertama
+      for(let r=sumStart;r<=n;r++){
+        ws.getCell(r,1).border=bd;ws.getCell(r,1).font={bold:true};
+        ws.getCell(r,2).border=bd;ws.getCell(r,2).numFmt=r<=n-3?'0.00':'#,##0';
+      }
+      ws.getCell(n,2).font={bold:true}; // Gaji sementara
     }
-    ws.getCell(n,2).font={bold:true}; // Gaji sementara
     // lebar kolom
     [6,10,8,8,16,14,16,14,16].forEach((w,i)=>ws.getColumn(i+1).width=w);
     // download
